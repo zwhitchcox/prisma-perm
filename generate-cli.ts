@@ -1,24 +1,34 @@
 import fs from 'fs-extra'
 import yaml from 'js-yaml'
 import path from 'path'
-import { generate } from './generate'
+import chalk from 'chalk'
+import { generate } from './generate-properties'
 import mkdirp from 'mkdirp-promise'
 import { crudDirectives, prismaDirectives } from './directives';
 
+
 const dir = process.cwd()
 
-const configError =
+const help =
 `
-You must provide an input and output for the permissions configuration like this:
+${chalk.cyan(`Create a file called prisma.perm.yaml in your prisma directory
+or current working directory with a generate config like the following:`)}
 
-perm:
-  generate:
-    - generator: directives-graphql
-      output:
-      - ./client/src/generated/perm/directives.graphql
-    - generator: properties
-      output: ./client/src/generated/perm/properties.js
+${chalk.green(`generate:
+  graphql-directives: ./generated/perm/directives.graphql
+  properties:
+    - ./generated/perm/properties.js
+    - ./src/generated/perm/properties.ts`)}
+
+${chalk.cyan(`properties refers to the validation and authorization properties that will
+be required to generate the authorization and validation checkers on your
+graphql-yoga server and your client side application.`)}
 `
+
+if (process.argv.some(arg => ['--help', '-h'].includes(arg))) {
+  console.log(help)
+  process.exit(0)
+}
 
 const prismaPermPathsToCheck = [
   'prisma.perm.yml',
@@ -46,7 +56,7 @@ const prismaPathsToCheck = [
 ]
 
 ;(async () => {
-  const prismaConfig= await getConfig(prismaPathsToCheck)
+  const prismaConfig = await getConfig(prismaPathsToCheck)
   const prismaPermConfig = await getConfig(prismaPermPathsToCheck)
   const datamodel = await getDataModel(prismaConfig)
   const properties = await generate(datamodel)
@@ -58,7 +68,7 @@ const prismaPathsToCheck = [
   ])
 
 
-  console.log("Successfully generated prisma-perm")
+  console.log(chalk.green("\nSuccessfully generated prisma-perm"))
 })()
   .catch(error => {
     console.error(error)
@@ -73,7 +83,8 @@ async function outputResults(paths, result) {
     const writePath = path.resolve(process.cwd(), outputPath)
     const dirName = path.dirname(writePath)
     await mkdirp(dirName)
-    return fs.writeFile(writePath, result)
+    await fs.writeFile(writePath, result)
+    console.log(chalk.cyan(`Generated ${outputPath}`))
   }))
 }
 

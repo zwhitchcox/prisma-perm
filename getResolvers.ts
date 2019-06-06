@@ -1,6 +1,6 @@
 import _ from 'lodash'
 import { getCheckers } from "./getCheckers";
-import { IFieldResult } from './generate';
+import { IFieldResult } from './generate-properties';
 
 const genericData = fnName => async (parent, args, context, info) => {
   return await context.prisma[fnName](args.data)

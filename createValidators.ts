@@ -1,4 +1,4 @@
-import {IObjResult, IFieldResult} from './generate'
+import {IObjResult, IFieldResult} from './generate-properties'
 import _ from 'lodash'
 
 const letters:any = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')

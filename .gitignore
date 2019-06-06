@@ -1,6 +1,4 @@
 node_modules
 generated
 prisma/generated
-examples/facebook/node_modules
-examples/facebook/src/generated
 dist

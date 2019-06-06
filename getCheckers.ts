@@ -1,4 +1,4 @@
-import { IFieldResult } from './generate';
+import { IFieldResult } from './generate-properties';
 import _ from 'lodash'
 import { createValidators } from '.createValidators';
 import { withRoleChecker } from './withRoleChecker';
