@@ -13,7 +13,7 @@ generate:
     output: ./generated/graphql/prisma.graphql
 
 seed:
-  run: node ./prisma/staging-seed.js
+  run: node ./prisma/seed.js
 
 perm:
   input: datamodel.graphql

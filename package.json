@@ -9,7 +9,12 @@
   "author": "<zwhitchcox@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@types/fs-extra": "^7.0.0",
+    "@types/graphql": "^14.2.0",
     "commander": "^2.20.0",
+    "fs-extra": "^8.0.1",
+    "graphql": "^14.3.1",
+    "js-yaml": "^3.13.1",
     "ts-node": "^8.2.0",
     "typescript": "^3.5.1"
   }
