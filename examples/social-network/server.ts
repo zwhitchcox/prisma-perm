@@ -1,10 +1,10 @@
 import { GraphQLServer } from 'graphql-yoga'
-import { prisma } from '../prisma/generated/prisma-client/index'
+import { prisma } from '../../dist'
 import * as Mutation from './resolvers/Mutation'
-// import * as Query from './resolvers/Query'
-import { properties } from '../prisma/generated/properties';
 import _ from 'lodash'
 import { getUser } from './utils';
+import { properties } from './generated/perm/properties';
+import { getResolvers } from './../../dist';
 
 const prisma2 = prisma
 const derivedResolvers = getResolvers(properties, prisma)
