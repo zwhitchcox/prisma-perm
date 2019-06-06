@@ -7,5 +7,10 @@
   },
   "repository": "https://github.com/zwhitchcox/prisma-perm",
   "author": "<zwhitchcox@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^2.20.0",
+    "ts-node": "^8.2.0",
+    "typescript": "^3.5.1"
+  }
 }
