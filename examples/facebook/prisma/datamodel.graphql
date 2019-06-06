@@ -1,0 +1,16 @@
+type User  @cd(role: PRIVATE) @ru(role: SELF) {
+  id: ID! @id
+  firstName: String!
+    @validation(preset: "name")
+  middleName: String
+    @validation(preset: "name")
+  lastName: String!
+    @validation(preset: "name")
+  email: String! @unique
+    @validation(preset:"email")
+    @r(role: SELF)
+  username: String! @unique
+    @validation(preset: "username")
+  password: String!
+    @validation(preset: "password")
+}

@@ -2,6 +2,9 @@
   "name": "prisma-perm",
   "version": "0.0.1",
   "main": "index.ts",
+  "bin": {
+    "generate": "./generate-cli.js"
+  },
   "repository": "https://github.com/zwhitchcox/prisma-perm",
   "author": "<zwhitchcox@gmail.com>",
   "license": "MIT"
