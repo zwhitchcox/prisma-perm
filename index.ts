@@ -1,0 +1,1 @@
+export { getResolvers } from './getResolvers'
