@@ -60,6 +60,7 @@ const prismaPathsToCheck = [
   const prismaPermConfig = await getConfig(prismaPermPathsToCheck)
   const datamodel = await getDataModel(prismaConfig)
   const properties = await generate(datamodel)
+  console.log('')
   await Promise.all([
     await outputResults(prismaPermConfig.generate['graphql-directives'], crudDirectives + prismaDirectives),
     await outputResults(prismaPermConfig.generate['graphql-perm-directives'], crudDirectives),
@@ -68,7 +69,7 @@ const prismaPathsToCheck = [
   ])
 
 
-  console.log(chalk.green("\nSuccessfully generated prisma-perm"))
+  console.log(chalk.green("\nSuccessfully generated prisma-perm\n"))
 })()
   .catch(error => {
     console.error(error)
