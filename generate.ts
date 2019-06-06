@@ -76,8 +76,7 @@ const scalarTypes = [
   "DateTime",
 ]
 
-export async function generate(inputPath: string, outputPaths: string) {
-  const graphqlString = (await fs.readFile(inputPath)).toString()
+export async function generate(graphqlString: string) {
   console.log(graphqlString)
   return
   // const parsed = parse(graphqlString)

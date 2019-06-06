@@ -1,0 +1,5 @@
+generate:
+  graphql-directives: ./generated/perm/directives.graphql
+  properties:
+    - ./generated/perm/properties.js
+    - ./src/generated/perm/properties.ts

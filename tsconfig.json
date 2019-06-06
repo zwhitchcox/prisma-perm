@@ -3,12 +3,11 @@
     "target": "es5",
     "outDir": "dist",
     "sourceMap": true,
-    "noEmit": true,
+    "noEmitOnError": false,
     "module": "commonjs",
     "moduleResolution": "node",
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "noImplicitAny": false,
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -19,6 +18,10 @@
       "esnext"
     ],
   },
+  "files": [
+    "index",
+    "generate-cli"
+  ],
   "exclude": [
     "node_modules"
   ]
