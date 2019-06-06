@@ -1,5 +1,5 @@
 # Specifies the HTTP endpoint of your Prisma API.
-endpoint: 'http://192.168.99.100:4466/facebook'
+endpoint: 'http://192.168.99.100:4466/social-network'
 
 # Defines your models, each model is mapped to the database as a table.
 datamodel:
@@ -10,9 +10,7 @@ generate:
   - generator: typescript-client
     output: ./generated/prisma-client
   - generator: graphql-schema
-    output:
-    - ./generated/graphql/prisma.graphql
-    - ./src/generated/graphql/prisma.graphql
+    output: ./generated/graphql/prisma.graphql
 
 
 seed:
