@@ -16,7 +16,7 @@ seed:
   run: node ./prisma/seed.js
 
 perm:
-  input: datamodel.graphql
+  input: ./prisma/datamodel.graphql
   output:
     - ./server/generated
     - ./client/src/generated
