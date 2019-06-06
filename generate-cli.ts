@@ -49,7 +49,7 @@ const prismaPathsToCheck = [
   const prismaConfig= await getConfig(prismaPathsToCheck)
   const prismaPermConfig = await getConfig(prismaPermPathsToCheck)
   const datamodel = await getDataModel(prismaConfig)
-  const properties = generate(datamodel)
+  const properties = await generate(datamodel)
   await Promise.all([
     await outputResults(prismaPermConfig.generate['graphql-directives'], crudDirectives + prismaDirectives),
     await outputResults(prismaPermConfig.generate['graphql-perm-directives'], crudDirectives),
@@ -60,8 +60,10 @@ const prismaPathsToCheck = [
 
   console.log("Successfully generated prisma-perm")
 })()
-
-  .catch(console.error)
+  .catch(error => {
+    console.error(error)
+    console.error(error.stack)
+  })
 
 async function outputResults(paths, result) {
   if (!paths || (Array.isArray(paths) && !paths.length)) return
@@ -69,8 +71,8 @@ async function outputResults(paths, result) {
 
   await Promise.all(paths.map(async outputPath => {
     const writePath = path.resolve(process.cwd(), outputPath)
-    const baseName = path.basename(writePath)
-    await mkdirp(baseName)
+    const dirName = path.dirname(writePath)
+    await mkdirp(dirName)
     return fs.writeFile(writePath, result)
   }))
 }
@@ -95,7 +97,7 @@ async function getPathToConfig(pathsToCheck) {
 async function getDataModel(prismaConfig) {
   const datamodelPaths = prismaConfig.datamodel
   const isInPrismaDir = /prisma\/prisma\.yma?l$/.test(await getPathToConfig(prismaPathsToCheck))
-  const basename = isInPrismaDir ? process.cwd() : path.resolve(process.cwd(), 'prisma')
+  const basename = isInPrismaDir ? path.resolve(process.cwd(), 'prisma') :  process.cwd()
   const buffs = await Promise.all(
     datamodelPaths.map(datamodelPath => fs.readFile(path.resolve(basename, datamodelPath)))
   )
