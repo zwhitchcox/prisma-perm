@@ -132,7 +132,6 @@ export async function generate(graphqlString: string) {
             .find(def => (def.name.value === "relation"))
           if (relationDirective)
             fieldResult.relation = directiveToObject(relationDirective)
-
         }
 
         return fieldsResult

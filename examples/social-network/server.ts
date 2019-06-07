@@ -1,9 +1,9 @@
 import { GraphQLServer } from 'graphql-yoga'
-import { prisma } from '../../dist'
+import { prisma } from './prisma/generated/prisma-client'
 import * as Mutation from './resolvers/Mutation'
 import _ from 'lodash'
 import { getUser } from './utils';
-import { properties } from './generated/perm/properties';
+import { properties } from './prisma/generated/perm/properties';
 import { getResolvers } from './../../dist';
 
 const prisma2 = prisma

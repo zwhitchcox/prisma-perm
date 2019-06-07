@@ -18,8 +18,8 @@ interface FieldResolvers {
   [key: string]: FieldResolver
 }
 
-export function getResolvers(properties, prisma) {
-  const checkers =  getCheckers(properties)
+export function getResolvers(properties, prisma, roleCheckers) {
+  const checkers =  getCheckers(properties, roleCheckers)
   return Object
     .keys(properties)
     .reduce((result, typeName: string) => {
@@ -28,7 +28,7 @@ export function getResolvers(properties, prisma) {
       const crud = (_.get(properties,`${typeName}.crud`) || {})
       if (crud.r) {
         const fnName = lowercaseFirstLetter(typeName)
-        checkApi(fnName)
+        checkApi(fnName, prisma)
         const readChecker = typeChecker.r
         const resolver = genericWhere(fnName)
         result.Query[fnName] = async (parent, args, context, info) => {
@@ -72,24 +72,13 @@ export function getResolvers(properties, prisma) {
         const action = "create"
         const fnName = `${action}${typeName}`
         const resolver = genericData(fnName)
-        checkApi(fnName)
+        checkApi(fnName, prisma)
         result.Mutation[fnName] = async (parent, args, context, info) => {
           if (await createChecker(parent, args, context, info)) {
             for (const fieldName in fieldCheckers) {
               const fieldChecker = fieldCheckers[fieldName]
               if (!(await fieldChecker(parent, args, context, info))) {
                 throw new Error("You do not have permission to do that")
-              }
-              const fieldProperties = properties[typeName].fields[fieldName]
-              if (fieldProperties.resolve) {
-                if (args[fieldName].connect) {
-                  const foreignProperties = properties[fieldProperties.type]
-                  if (fieldProperties.relation.name) {
-                    // TODO
-                  }
-
-                  checkers[fieldProperties.type].fields
-                }
               }
             }
             return await resolver(parent, args, context, info)
@@ -101,7 +90,7 @@ export function getResolvers(properties, prisma) {
         const action = "update"
         const fnName = `${action}${typeName}`
         const resolver = generic(fnName)
-        checkApi(fnName)
+        checkApi(fnName, prisma)
         result.Mutation[fnName] = async (parent, args, context, info) => {
           if (await updateChecker(parent, args, context, info)) {
             for (const fieldName in fieldCheckers) {
@@ -120,7 +109,7 @@ export function getResolvers(properties, prisma) {
         const action = "delete"
         const fnName = `${action}${typeName}`
         const resolver = genericWhere(fnName)
-        checkApi(fnName)
+        checkApi(fnName, prisma)
         result.Mutation[fnName] = async (parent, args, context, info) => {
           if (await deleteChecker(parent, args, context, info)) {
             for (const fieldName in fieldCheckers) {
@@ -140,7 +129,7 @@ export function getResolvers(properties, prisma) {
 
 
 
-function checkApi(name: string) {
+function checkApi(name: string, prisma) {
   if (!prisma[name])
     throw new Error(`The function ${name} does not exist on prisma.`)
 }

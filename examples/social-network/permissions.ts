@@ -52,10 +52,6 @@ async function checkPrivate() {
   return false
 }
 
-async function checkProvider(parent, args, context, info) {
-  return false // TODO implement
-}
-
 async function checkPublic(parent, args, context, info) {
   // TODO check active
   return true
