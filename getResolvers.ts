@@ -100,11 +100,13 @@ export async function getResolvers(properties, prisma, roleCheckers, checkPriv) 
           for (const fieldName in updateFieldCheckers) {
             const fieldChecker = updateFieldCheckers[fieldName]
             if (!(await fieldChecker(parent, args, context, info))) {
-              throw new Error("You do not have permission to do that")
+              throw new Error(`You do not have permission to ${action} ${typeName}.${fieldName}`)
             }
           }
           return await resolver(parent, args, context, info)
         }
+
+        throw new Error(`You do not have permission to do update ${typeName}`)
       }
     }
 
