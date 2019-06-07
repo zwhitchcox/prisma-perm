@@ -1,0 +1,17 @@
+# import *        from '../prisma/generated/perm/directives.graphql'
+# import *        from '../prisma/generated/graphql/prisma.graphql'
+# import Query    from '../prisma/generated/graphql/prisma.graphql'
+# import Mutation from '../prisma/generated/graphql/prisma.graphql'
+
+scalar DateTime
+
+type Mutation {
+  signup(email: String!, firstName: String!, lastName: String!, username: String!): AuthPayload
+  signin(email: String!, password: String!): AuthPayload
+  changePassword(password: String!, oldPassword: String!): AuthPayload
+}
+
+type AuthPayload {
+  token: String
+  user: User
+}

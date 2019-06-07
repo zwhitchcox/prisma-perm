@@ -1,13 +1,15 @@
 import { GraphQLServer } from 'graphql-yoga'
-import { prisma } from './prisma/generated/prisma-client'
+import { prisma } from '../prisma/generated/prisma-client'
 import * as Mutation from './resolvers/Mutation'
 import _ from 'lodash'
 import { getUser } from './utils';
-import { properties } from './prisma/generated/perm/properties';
-import { getResolvers } from './../../dist';
+import { properties } from '../prisma/generated/perm/properties';
+import { getResolvers } from '../../..';
 import { roleCheckers, checkPriv } from './permissions';
 
-const prisma2 = prisma
+// const prisma2 = prisma
+
+;(async () => {
 const derivedResolvers = getResolvers(properties, prisma, roleCheckers, checkPriv)
 
 
@@ -42,3 +44,5 @@ const server = new GraphQLServer({
 })
 
 server.start(() => console.log(`Server is running on http://localhost:4000`))
+
+})().catch(console.error)

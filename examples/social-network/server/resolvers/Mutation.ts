@@ -1,8 +1,6 @@
-const bcrypt = require('bcryptjs')
-const jwt = require('jsonwebtoken')
-const { APP_SECRET, getUser } = require('../utils')
-const uuid = require('uuid/v4')
-const {sendMail} = require('../send-mail')
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+import  { APP_SECRET, getUser } from '../utils'
 
 export async function signup(parent:any, args:any, context:any) {
   // validatePassword(args.password)
