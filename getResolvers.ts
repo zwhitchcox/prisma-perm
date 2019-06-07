@@ -44,7 +44,7 @@ export function getResolvers(properties, prisma, roleCheckers, checkPriv) {
             return allowedResult
           }
         }
-        result[typeName] = Object.entries(properties[typeName])
+        result[typeName] = Object.entries(properties[typeName].fields)
           .reduce((result: FieldResolvers, [fieldName, field]: [string, IFieldResult]): FieldResolvers => {
             const fieldChecker =  typeChecker.fields[fieldName].r
             const defaultResolver = async (parent, args, context, info) => {

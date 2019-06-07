@@ -1,8 +1,7 @@
-import { IFieldResult } from './generate-properties';
 import _ from 'lodash'
 import { createValidators } from './createValidators';
 
-export async function getCheckers(properties, roleCheckers, checkPriv) {
+export function getCheckers(properties, roleCheckers, checkPriv) {
   const validators = createValidators(properties)
   const checkers = {}
 
@@ -10,6 +9,7 @@ export async function getCheckers(properties, roleCheckers, checkPriv) {
     .keys(properties)
     .reduce((result, typeName: string) => {
       const crud = (_.get(properties,`${typeName}.crud`) || {})
+      result[typeName] = {}
 
       if (crud.c) {
         const action = "create"
@@ -24,12 +24,16 @@ export async function getCheckers(properties, roleCheckers, checkPriv) {
       if (crud.u) {
         const action = "update"
         const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
-       result[typeName].u = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
+        result[typeName].u = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
       }
       if (crud.d) {
         const action = "delete"
         const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
         result[typeName].d = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
+      }
+      if (!Object.keys(result[typeName]).length) {
+        delete result[typeName]
+        return result
       }
 
       result[typeName].fields = Object.entries(properties[typeName].fields)
@@ -89,21 +93,22 @@ function withValidationChecker(checker, name, action, validators, resource) {
 }
 
 function withAuthChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
-  checker = withForeignChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName)
-  if (auth.priv.length) {
+  if (resource === "field")
+    checker = withForeignChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName)
+  if (auth.priv) {
     checker = withPrivChecker(auth.priv, checker, action, checkPriv)
   }
-  if (auth.role.length) {
+  if (auth.role) {
     checker = withRoleChecker(auth.role, checker, roleCheckers)
   }
-  if (auth.func.length) {
+  if (auth.func) {
     checker = withFuncChecker(auth.func, checker, action)
   }
   return checker
 }
 
 function withForeignChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName) {
-  const localProperties = _.get(properties, `${typeName}.fields${fieldName}`)
+  const localProperties = _.get(properties, `${typeName}.fields.${fieldName}`)
 
 
   if (!localProperties.resolve)
