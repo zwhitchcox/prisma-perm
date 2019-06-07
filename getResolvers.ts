@@ -18,8 +18,8 @@ interface FieldResolvers {
   [key: string]: FieldResolver
 }
 
-export function getResolvers(properties, prisma, roleCheckers) {
-  const checkers =  getCheckers(properties, roleCheckers)
+export function getResolvers(properties, prisma, roleCheckers, checkPriv) {
+  const checkers =  getCheckers(properties, roleCheckers, checkPriv)
   return Object
     .keys(properties)
     .reduce((result, typeName: string) => {

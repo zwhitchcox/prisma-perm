@@ -5,7 +5,7 @@ export const roleCheckers = {
   AUTHENTICATED: checkAuthenticated,
 }
 
-async function checkPriv(priv, args, context, info, action) {
+export async function checkPriv(priv, args, context, info, action) {
   const user = context.getUser()
   const { prisma } = context
   let companyname;

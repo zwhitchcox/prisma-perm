@@ -5,9 +5,10 @@ import _ from 'lodash'
 import { getUser } from './utils';
 import { properties } from './prisma/generated/perm/properties';
 import { getResolvers } from './../../dist';
+import { roleCheckers, checkPriv } from './permissions';
 
 const prisma2 = prisma
-const derivedResolvers = getResolvers(properties, prisma)
+const derivedResolvers = getResolvers(properties, prisma, roleCheckers, checkPriv)
 
 
 const resolvers = {

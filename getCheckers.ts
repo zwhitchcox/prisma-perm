@@ -2,7 +2,7 @@ import { IFieldResult } from './generate-properties';
 import _ from 'lodash'
 import { createValidators } from './createValidators';
 
-export async function getCheckers(properties, roleCheckers) {
+export async function getCheckers(properties, roleCheckers, checkPriv) {
   const validators = createValidators(properties)
   const checkers = {}
 
@@ -14,22 +14,22 @@ export async function getCheckers(properties, roleCheckers) {
       if (crud.c) {
         const action = "create"
         const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
-       result[typeName].c = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers)
+       result[typeName].c = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
       }
       if (crud.r) {
         const action = "read"
         const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
-        result[typeName].r = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers)
+        result[typeName].r = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
       }
       if (crud.u) {
         const action = "update"
         const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
-       result[typeName].u = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers)
+       result[typeName].u = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
       }
       if (crud.d) {
         const action = "delete"
         const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
-        result[typeName].d = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers)
+        result[typeName].d = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
       }
 
       result[typeName].fields = Object.entries(properties[typeName].fields)
@@ -37,19 +37,19 @@ export async function getCheckers(properties, roleCheckers) {
           result[fieldName] = {}
           const cAuth = _.get(field, 'crud.c')
           if (cAuth) {
-            result[fieldName].c = getChecker(checkers, typeName, 'create', null, properties, cAuth, 'field', fieldName, roleCheckers)
+            result[fieldName].c = getChecker(checkers, typeName, 'create', null, properties, cAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           const rAuth =_.get(field, 'crud.r')
           if (rAuth) {
-            result[fieldName].r = getChecker(checkers, typeName, 'read', null, properties, rAuth, 'field', fieldName, roleCheckers)
+            result[fieldName].r = getChecker(checkers, typeName, 'read', null, properties, rAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           const uAuth = _.get(field, 'crud.u')
           if (uAuth) {
-            result[fieldName].u = getChecker(checkers, typeName, 'update', null, properties, uAuth, 'field', fieldName, roleCheckers)
+            result[fieldName].u = getChecker(checkers, typeName, 'update', null, properties, uAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           const dAuth = _.get(field, 'crud.d')
           if (dAuth) {
-            result[fieldName].d = getChecker(checkers, typeName, 'delete', null, properties, dAuth, 'field', fieldName, roleCheckers)
+            result[fieldName].d = getChecker(checkers, typeName, 'delete', null, properties, dAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           return result
         }, {})
@@ -59,9 +59,9 @@ export async function getCheckers(properties, roleCheckers) {
 }
 
 
-function getChecker(checkers, typeName, action, validators, properties, auth, resource, fieldName, roleCheckers) {
+function getChecker(checkers, typeName, action, validators, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
   let checker = () => false
-  checker = withAuthChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName, roleCheckers)
+  checker = withAuthChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName, roleCheckers, checkPriv)
   checker =  withValidationChecker(checker, typeName, action, validators, resource)
   return checker
 }
@@ -88,10 +88,10 @@ function withValidationChecker(checker, name, action, validators, resource) {
   }
 }
 
-function withAuthChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName, roleCheckers) {
+function withAuthChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
   checker = withForeignChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName)
   if (auth.priv.length) {
-    checker = withPrivChecker(auth.priv, checker, action)
+    checker = withPrivChecker(auth.priv, checker, action, checkPriv)
   }
   if (auth.role.length) {
     checker = withRoleChecker(auth.role, checker, roleCheckers)
@@ -142,7 +142,7 @@ function withForeignTypeChecker(checkers, checker, action, localProperties, prop
 function withForeignFieldChecker(checkers, checker, action, localProperties, properties, typeName, fieldName) {
   const foreignFieldName = getForeignFieldName(localProperties, properties)
   const foreignFieldProps = properties[localProperties.type].fields[foreignFieldName]
-  if (action === "update") {
+  if (action === "update" || action === "create") {
     if (!foreignFieldProps.crud.u) {
       throw new Error(`There's no relational permission to update ${localProperties.type}${(fieldName && ('.' + fieldName)) || ''}, therefore, you cannot have a ${action} permission for ${typeName}.${fieldName}`)
     }
@@ -178,12 +178,12 @@ function withFuncChecker(func, checker, action) {
   }
 }
 
-function withPrivChecker(privs, checker, action) {
+function withPrivChecker(privs, checker, action, checkPriv) {
   return async (parent, args, context, info) => {
     const allowed = await Promise.all(privs.map(async priv => {
       return await checkPriv(parent, args, context, info, action)
     }))
-    if (allowed.some(Boolean))
+    if (allowed.some(Boolean)) {
       return await checker(parent, args, context, info)
     }
   }
