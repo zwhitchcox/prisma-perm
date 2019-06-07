@@ -20,6 +20,16 @@
             "cwd": "${workspaceRoot}",
             "protocol": "inspector",
             "internalConsoleOptions": "openOnSessionStart"
+        },
+        {
+            "name": "User",
+            "type": "node",
+            "request": "launch",
+            "args": ["./test/user/test.ts"],
+            "runtimeArgs": ["-r", "ts-node/register"],
+            "cwd": "${workspaceRoot}",
+            "protocol": "inspector",
+            "internalConsoleOptions": "openOnSessionStart"
         }
     ]
 }

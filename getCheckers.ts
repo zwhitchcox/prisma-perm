@@ -38,25 +38,29 @@ export function getCheckers(properties, roleCheckers, checkPriv) {
 
       result[typeName].fields = Object.entries(properties[typeName].fields)
         .reduce((result, [fieldName, field]) => {
-          result[fieldName] = {}
           const cAuth = _.get(field, 'crud.c')
           if (cAuth) {
-            result[fieldName].c = getChecker(checkers, typeName, 'create', null, properties, cAuth, 'field', fieldName, roleCheckers, checkPriv)
+            result.c[fieldName] = getChecker(checkers, typeName, 'create', null, properties, cAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           const rAuth =_.get(field, 'crud.r')
           if (rAuth) {
-            result[fieldName].r = getChecker(checkers, typeName, 'read', null, properties, rAuth, 'field', fieldName, roleCheckers, checkPriv)
+            result.r[fieldName] = getChecker(checkers, typeName, 'read', null, properties, rAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           const uAuth = _.get(field, 'crud.u')
           if (uAuth) {
-            result[fieldName].u = getChecker(checkers, typeName, 'update', null, properties, uAuth, 'field', fieldName, roleCheckers, checkPriv)
+            result.u[fieldName] = getChecker(checkers, typeName, 'update', null, properties, uAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           const dAuth = _.get(field, 'crud.d')
           if (dAuth) {
-            result[fieldName].d = getChecker(checkers, typeName, 'delete', null, properties, dAuth, 'field', fieldName, roleCheckers, checkPriv)
+            result.d[fieldName] = getChecker(checkers, typeName, 'delete', null, properties, dAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           return result
-        }, {})
+        }, {
+          c: {},
+          r: {},
+          u: {},
+          d: {}
+        })
       return result
     }, checkers)
   return checkers
@@ -96,13 +100,13 @@ function withAuthChecker(checkers, checker, typeName, action, properties, auth, 
   if (resource === "field")
     checker = withForeignChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName)
   if (auth.priv) {
-    checker = withPrivChecker(auth.priv, checker, action, checkPriv)
+    checker = withPrivChecker(auth.priv, checker, action, checkPriv, resource)
   }
   if (auth.role) {
-    checker = withRoleChecker(auth.role, checker, roleCheckers)
+    checker = withRoleChecker(auth.role, checker, roleCheckers, resource)
   }
   if (auth.func) {
-    checker = withFuncChecker(auth.func, checker, action)
+    checker = withFuncChecker(auth.func, checker, action, resource)
   }
   return checker
 }
@@ -173,7 +177,7 @@ function getForeignFieldName(localProperties, properties) {
   }
 }
 
-function withFuncChecker(func, checker, action) {
+function withFuncChecker(func, checker, action, resource) {
   return async (...args) => {
     for (let i = 0; i < func.length; i++) {
       if (await func(...args))
@@ -183,7 +187,7 @@ function withFuncChecker(func, checker, action) {
   }
 }
 
-function withPrivChecker(privs, checker, action, checkPriv) {
+function withPrivChecker(privs, checker, action, checkPriv, resource) {
   return async (parent, args, context, info) => {
     const allowed = await Promise.all(privs.map(async priv => {
       return await checkPriv(parent, args, context, info, action)
@@ -194,18 +198,17 @@ function withPrivChecker(privs, checker, action, checkPriv) {
   }
 }
 
-export async function withRoleChecker(roles, checker, roleCheckers) {
-  const checkRoles = roles.forEach(role => {
+export function withRoleChecker(roles, checker, roleCheckers, resource) {
+  roles.forEach(role => {
     if (!roleCheckers[role]) {
       throw new Error("Could not find that role")
     }
   })
   return async (...args) => {
     for (let i = 0; i < roles.length; i++) {
-      const checkRole = checkRoles[i]
-      if (await checkRole(...args)) {
-        return checker(...args)
-      }
+      const checkRole = roleCheckers[roles[i]]
+      const hasRole = await checkRole(...args)
+      if (hasRole) return true
     }
   }
 }
