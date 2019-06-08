@@ -23,6 +23,8 @@ test('User update function', async () => {
   console.log(chalk.green('user update function successful.'))
 })
 
+
+
 async function updateUserFirstName(firstName, requestingUser, userToUpdateId) {
   const context = {
     getUser() {

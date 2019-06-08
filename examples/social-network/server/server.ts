@@ -10,7 +10,7 @@ import { roleCheckers, checkPriv } from './permissions';
 // const prisma2 = prisma
 
 ;(async () => {
-const derivedResolvers = getResolvers(properties, prisma, roleCheckers, checkPriv)
+const derivedResolvers = await getResolvers(properties, prisma, roleCheckers, checkPriv)
 
 
 const resolvers = {
@@ -43,6 +43,5 @@ const server = new GraphQLServer({
   }),
 })
 
-server.start(() => console.log(`Server is running on http://localhost:4000`))
 
 })().catch(console.error)

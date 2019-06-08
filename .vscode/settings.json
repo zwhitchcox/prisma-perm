@@ -1,5 +1,6 @@
 {
   "files.exclude": {
-    "examples\\social-network\\node_modules": true
+    "examples\\social-network\\node_modules": true,
+    "node_modules": true
   }
 }
