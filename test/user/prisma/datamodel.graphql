@@ -14,12 +14,14 @@ type User  @cd(role: PRIVATE) @ru(role: SELF) {
   password: String!
     @validation(preset: "password")
   wall: Wall!
+    @r(role: SELF)
 }
 
 
 type Wall {
   id: ID! @id,
   posts: [Post!]!
+    @crd(role: SELF)
 }
 
 type Post {

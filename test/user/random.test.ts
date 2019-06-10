@@ -2,23 +2,9 @@ import { testServer } from "./test-server";
 import fetch from 'node-fetch'
 import { prisma } from "./prisma/generated/prisma-client";
 import uuid from 'uuid/v4'
-import gql from 'graphql-tag'
-import chalk from "chalk";
 import { promisify } from "util";
 import expect from 'expect'
-
-let tests = []
-let afters = []
-const test = (name, fn) => tests.push([name, fn])
-const after = fn => afters.push(fn)
-const log = (...args) => {
-  const err = new Error()
-  const fileNameRegex = /\(.*\)/g
-
-  const match = fileNameRegex.exec(err.stack.split('\n')[2])
-  console.log(chalk.cyan(match[0].slice(1, match[0].length - 1)))
-  console.log(...args)
-}
+import { after, test } from './test'
 
 
 const UPDATE_FIRST_NAME_MUTATION = `
@@ -69,6 +55,10 @@ test('Update user graphql-yoga', async () => {
   expect(updatedUser1.firstName).toBe("Zane")
 })
 
+test('post to wall', async () => {
+
+})
+
 
 function sendRequestAsUser(query, variables, user?) {
   return fetch(`http://localhost:${port}`, {
@@ -109,6 +99,13 @@ async function createTestUser() {
     username,
     email,
     password,
+    wall: {
+      create: {
+        posts: {
+          create: []
+        }
+      }
+    }
   })
 }
 
@@ -118,20 +115,3 @@ function createRandomName() {
   const capitalName = name.charAt(0).toUpperCase() + name.slice(1)
   return capitalName
 }
-
-;(async () => {
-for (let i = 0; i < tests.length; i++) {
-  const [name, fn] = tests[i]
-  console.log(name)
-  try {
-    await fn()
-    console.log(chalk.green('Passed ✓'))
-  } catch (e) {
-    console.log(chalk.red(e))
-    console.error(chalk.red('Failed :('))
-  }
-}
-for (let i = 0; i < afters.length; i++) {
-  await afters[i]()
-}
-})()
