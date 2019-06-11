@@ -8,12 +8,11 @@ export function getCheckers(options) {
     throw new Error('Please pass a properties object, see docs for more info.')
   }
   const validators = createValidators(properties)
-  const checkers = {}
 
-  Object
+  const checkers = Object
     .keys(properties)
-    .reduce((result, typename: string) => {
-      const typeResult:any = result[typename] = {}
+    .reduce((mainResult, typename: string) => {
+      const typeResult:any = mainResult[typename] = {}
 
       typeResult._validationCheckers = getValidationCheckers(validators, typename)
       typeResult._permCheckers = {
@@ -21,47 +20,15 @@ export function getCheckers(options) {
         _scalarFields: getScalarPermCheckers(options, properties, typename),
         _resolverFields: getResolvePermCheckers(options, properties, typename),
       }
-
       typeResult._checkScalars = getCheckScalars(typeResult) // check validation and scalar permissions
-      typeResult._checkResolvers = getCheckResolvers(typeResult)
-      typeResult.checkType = getCheckType(typeResult)
-
-      return result
+      return mainResult
     }, {})
 
-  //     result[typeName].resolverFields = Object.entries(properties[typeName].fields)
-  //       .reduce((result, [fieldName, field]: [string, any]) => {
-  //         if (!field.resolve) return result
-  //         const resolveFields:any = {}
-  //         const cAuth = _.get(field, 'crud.c')
-  //         if (cAuth) {
-  //           resolveFields.c = getChecker(checkers, typeName, 'create', null, properties, cAuth, 'field', fieldName, roleCheckers, checkPriv)
-  //         }
-  //         const rAuth =_.get(field, 'crud.r')
-  //         if (rAuth) {
-  //           resolveFields.r = getChecker(checkers, typeName, 'read', null, properties, rAuth, 'field', fieldName, roleCheckers, checkPriv)
-  //         }
-  //         const uAuth = _.get(field, 'crud.u')
-  //         if (uAuth) {
-  //           resolveFields.u = getChecker(checkers, typeName, 'update', null, properties, uAuth, 'field', fieldName, roleCheckers, checkPriv)
-  //         }
-  //         const dAuth = _.get(field, 'crud.d')
-  //         if (dAuth) {
-  //           resolveFields.d = getChecker(checkers, typeName, 'delete', null, properties, dAuth, 'field', fieldName, roleCheckers, checkPriv)
-  //         }
-  //         if (Object.keys(resolveFields.length)) {
-  //           result[fieldName].resolveFields = resolveFields
-  //         }
-  //         return result
-  //       }, {})
-  //     return result
-  //   }, checkers)
-
-  // Object.entries(checkers).forEach(([typeName, typeChecker]: [string, any]) => {
-  //   typeChecker.scalarFieldChecker.u = getScalarFieldChecker(typeName, properties, checkers, 'update')
-  //   typeChecker.scalarFieldChecker.c = getScalarFieldChecker(typeName, properties, checkers, 'create')
-  //   typeChecker.resolveFieldCheckers = getResolveFieldCheckers(typeName, properties, checkers)
-  // }, {})
+    for (const typename in checkers) {
+      const typeResult = checkers[typename]
+      typeResult._checkResolvers = getCheckResolvers(checkers, properties, typename)
+      typeResult.checkType = getCheckType(mainResult, typeResult, properties)
+    }
   return checkers
 }
 
@@ -205,57 +172,58 @@ function getCheckScalars({_permCheckers, _validationCheckers}) {
   }, {})
 }
 
-function getCheckResolvers(typeResult) {
-  const resolveFieldCheckers: any = {}
-  const resolveFields = checkers[typeName].resolveFields
-  for (const fieldName in resolveFields) {
-    const resolveFieldShallow = resolveFields[fieldName]
-    const foreignTypeName = properties[typeName][fieldName].type
-    const {scalarFieldCheckers} = checkers[foreignTypeName]
-    resolveFieldCheckers[fieldName] = async (parent, args, context, info) => {
-      for (const fieldName in resolveFieldCheckers) {
+function getCheckResolvers(mainResult, properties, typename) {
+  const typeResult = mainResult[typename]
+  const resolverFieldCheckers: any = {}
+  const resolverFieldPermCheckers = typeResult._permCheckers_resolverFields
+  for (const fieldname in resolverFieldPermCheckers) {
+    const foreignTypeName = properties[typename][fieldname].type
+    const foreignResult = mainResult[foreignTypeName]
+    const checkForeignScalars = foreignResult._permCheckers._checkScalars
+    resolverFieldCheckers[fieldname] = async (parent, args, context, info) => {
+      for (const fieldName in resolverFieldCheckers) {
         if (!args[fieldName]) continue
         const fieldArg = args[fieldName]
         const { create } = fieldArg
         if (create) {
-          if (!resolveFieldCheckers[fieldName].c) {
+          if (!resolverFieldPermCheckers[fieldName].create) {
             return false
           }
           return (await Promise.all(
               [
-                await resolveFieldShallow.c(args, create, context, info),
-                await resolveFieldCheckers[fieldName](args, create, context, info),
-                await scalarFieldCheckers(parent, args, context, info),
+                await resolverFieldPermCheckers.create(parent, args, context, info),
+                await checkForeignScalars.create(parent, create, context, info),
+                await mainResult[foreignTypeName]._checkResolvers(args, create, context, info),
               ])
             ).filter(Boolean).length === 2
 
         }
         const { connect } = fieldArg
         if (connect) {
-          if (!resolveFieldShallow.u) {
+          if (!resolverFieldPermCheckers.update) {
             return false
           }
-          return await resolveFieldShallow.u(parent, args, context, info)
+          return await resolverFieldPermCheckers.update(parent, args, context, info)
         }
         const { disconnect } = fieldArg
         if (disconnect) {
-          if (!resolveFieldShallow.d) {
+          if (!resolverFieldPermCheckers.delete) {
             return false
           }
-          return await resolveFieldShallow.d(parent, args, context, info)
+          return await resolverFieldPermCheckers.delete(parent, args, context, info)
         }
         const { set } = fieldArg
         if (set) {
-          if (!resolveFieldShallow.u || !resolveFieldShallow.d) {
+          if (!(resolverFieldPermCheckers.update  && resolverFieldPermCheckers.delete)) {
             return false
           }
           return (await Promise.all(
-            [await resolveFieldShallow.u(parent, args, context, info),
-            await resolveFieldShallow.d(parent, args, context, info)])).filter(Boolean).length === 2
+            [await resolverFieldPermCheckers.update(parent, args, context, info),
+            await resolverFieldPermCheckers.update(parent, args, context, info)])).filter(Boolean).length === 2
         }
         throw new Error('Couldn\'t find that action.')
       }
     }
   }
-  return resolveFieldCheckers
+  return resolverFieldCheckers
 }
