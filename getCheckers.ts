@@ -116,14 +116,13 @@ function getTypeCheckers(options, properties, typeName) {
   }, {})
 }
 function getTypeChecker(options, properties, typeName, action) {
-  const crudProperties = (_.get(properties,`${typeName}.crud.${action.charAt(0)}`) || {})
+  const crudProperties = (_.get(properties,`${typeName}.crud.${action.charAt(0)}`))
   if (!crudProperties) {
     return () => {
       throw new Error("That function is forbidden")
     }
   }
-  const permissionsChecker = getPermissionsChecker(options, properties, typeName, action)
-  return permissionsChecker
+  return getPermissionsChecker(options, properties, typeName, action)
 }
 
 // function getChecker(checkers, typeName, action, validators, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
@@ -133,33 +132,6 @@ function getTypeChecker(options, properties, typeName, action) {
 //   return checker
 // }
 
-function getValidationCheckers(validators, typeName) {
-  return ['create', 'update',].reduce((result, action) => {
-    result[action] = getValidationChecker(validators, typeName, action)
-    return result
-  }, {})
-}
-
-function getValidationChecker(validators, typeName, action) {
-  const { validation } = validators[typeName]
-  if (!validation) {
-    return
-  }
-  const isUpdate = action === "update"
-  return (parent, args, context, info) => {
-    for (const key in validation) {
-      const validator = validation[key]
-      const data = args.data || args
-      const datum = data[key]
-      if (!datum)
-        continue
-      const errors = validator(datum, isUpdate)
-      if (errors.length) {
-        return [false, new Error(`There were errors on ${typeName} errors.join('\n'))`]
-      }
-    }
-  }
-}
 
 function getPermissionsChecker(properties, typeName, action, options) {
   const permissionsCheckers = []
@@ -228,6 +200,33 @@ function getRoleChecker(roles, roleCheckers) {
       return await roleCheckers[role](...args)
     }))
     return allowed.some(Boolean)
+  }
+}
+
+function getValidationCheckers(validators, typeName) {
+  return ['create', 'update',].reduce((result, action) => {
+    result[action] = getValidationChecker(validators, typeName, action)
+    return result
+  }, {})
+}
+function getValidationChecker(validators, typeName, action) {
+  const { validation } = validators[typeName]
+  if (!validation) {
+    return
+  }
+  const isUpdate = action === "update"
+  return (parent, args, context, info) => {
+    for (const key in validation) {
+      const validator = validation[key]
+      const data = args.data || args
+      const datum = data[key]
+      if (!datum)
+        continue
+      const errors = validator(datum, isUpdate)
+      if (errors.length) {
+        return [false, new Error(`There were errors on ${typeName} errors.join('\n'))`]
+      }
+    }
   }
 }
 
