@@ -115,20 +115,15 @@ function getTypeCheckers(options, properties, typeName) {
     return result
   }, {})
 }
-function getTypeChecker(options, properties, validators, typeName) {
-  const checkerPromises = []
-  const crudProperties = (_.get(properties,`${typeName}.crud`) || {})
-  const cProperties = crudProperties.c
-  if (!cProperties) {
+function getTypeChecker(options, properties, typeName, action) {
+  const crudProperties = (_.get(properties,`${typeName}.crud.${action.charAt(0)}`) || {})
+  if (!crudProperties) {
     return () => {
       throw new Error("That function is forbidden")
     }
   }
-  const action = "create"
-  const validationChecker = getValidationChecker(validators, typeName, action)
-  if (validationChecker) checkerPromises.push(validationChecker)
   const permissionsChecker = getPermissionsChecker(options, properties, typeName, action)
-  if (permissionsChecker) checkerPromises.push(permissionsChecker)
+  return permissionsChecker
 }
 
 // function getChecker(checkers, typeName, action, validators, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
