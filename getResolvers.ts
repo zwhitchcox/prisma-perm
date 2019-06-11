@@ -18,57 +18,66 @@ interface FieldResolvers {
   [key: string]: FieldResolver
 }
 
-export async function getResolvers(properties, prisma, roleCheckers, checkPriv) {
-  const checkers =  getCheckers(properties, roleCheckers, checkPriv)
+export async function getResolvers(options) {
+  const {properties, prisma} = options
+  const checkers =  getCheckers(options)
   const resolvers = {
     Mutation: {},
     Query: {},
   }
-  for (const typeName in properties) {
-    const typeChecker = checkers[typeName]
-    const scalarFieldCheckers = typeChecker.scalarFields
-    const resolverFieldCheckers = typeChecker.resolverFields
-    const crud = (_.get(properties,`${typeName}.crud`) || {})
-    if (crud.r) {
-      const fnName = lowercaseFirstLetter(typeName)
-      checkApi(fnName, prisma)
-      const readChecker = typeChecker.r
-      const resolver = genericWhere(fnName)
-      resolvers.Query[fnName] = async (parent, args, context, info) => {
-        if (await readChecker(...args)) {
-          const allResult = await resolver(parent, args, context, info)
-          const requestedFields = info.fieldASTs.map(field => field.name.value)
-          const allowedResult = {}
-          await Promise.all(requestedFields.map(async (result, fieldName) => {
-              const fieldChecker = typeChecker[fieldName].r
-              if (await fieldChecker(parent, args, context, info))
-                allowedResult[fieldName] = allResult[fieldName]
-          }))
-          return allowedResult
-        }
+  for (const typename in properties) {
+    const checker = checkers[typename]
+    const fnName = lowercaseFirstLetter(typename)
+    checkApi(fnName, prisma)
+    const resolver = genericWhere(fnName)
+    const {_permCheckers} = checker
+    resolvers.Query[fnName] = async (parent, args, context, info) => {
+      const checkerFns = []
+
+      checkerFns.push(_permCheckers._type.read)
+
+      // TODO recursive check ASTs
+      const requestedFields = info.fieldASTs.map(field => field.name.value)
+      for (const fieldname in requestedFields) {
+        const checkerFn = _permCheckers._scalarFields[fieldname] || _permCheckers.resolverFields[fieldname]
+        checkerFns.push(checkerFn.read)
       }
-      resolvers[typeName] = Object.entries(properties[typeName].fields)
-        .reduce((result: FieldResolvers, [fieldName, field]: [string, IFieldResult]): FieldResolvers => {
-          const fieldChecker =  typeChecker.fields.r[fieldName]
-          const defaultResolver = async (parent, args, context, info) => {
-            return await context.prisma[fnName]({id: parent.id})[fieldName]()
-          }
-          if (fieldChecker) {
-            if (field.resolve) {
-              let resolverWithFieldChecker
-              const fieldChecker = typeChecker.r[fieldName]
-              if (fieldChecker) {
-                resolverWithFieldChecker = async (parent, args, context, info) => {
-                  if (await fieldChecker(parent, args, context, info))
-                    return await defaultResolver(parent, args, context, info)
-                }
-              }
-              result[fieldName] = resolverWithFieldChecker || defaultResolver
-            }
-          }
-        return result
-      }, <FieldResolvers>{})
+
+      Promise.all(checkerFns.map(async fn => await fn(parent, args, context, info)))
+        .then(() => resolver(parent, args, context, info))
     }
+
+    resolvers[typename] = {}
+    for (const fieldname in _permCheckers.resolverFields) {
+      const resolver = async (parent, args, context, info) => {
+        return await context.prisma[fnName]({id: parent.id})[fieldname]()
+      }
+      const foreignTypeName = properties[typename][fieldname].type
+      const foreignChecker = checkers[foreignTypeName]
+      resolvers[typename][fieldname] = async (parent, args, context, info) => {
+        const checkerFns = []
+        const requestedFields = info.fieldASTs.map(field => field.name.value)
+        for (const fieldname in requestedFields) {
+          const checkerFn = foreignChecker._permCheckers._scalarFields[fieldname] || foreignChecker._permCheckers.resolverFields[fieldname]
+          checkerFns.push(checkerFn.read)
+        }
+
+        Promise.all(checkerFns.map(async fn => await fn(parent, args, context, info)))
+          .then(() => resolver(parent, args, context, info))
+      }
+    }
+
+      if (typeResult._permCheckers._type[action]) {
+        const checkerFns = [
+          typeResult._permCheckers._type[action],
+          typeResult._permCheckers._scalarFields[action],
+          typeResult._checkResolvers[action],
+        ]
+        if (['update', 'create'].includes(action)) {
+          checkerFns.push(typeResult._checkScalars[action])
+        }
+
+
 
     if (crud.c) {
       const createChecker = typeChecker.c
@@ -87,7 +96,7 @@ export async function getResolvers(properties, prisma, roleCheckers, checkPriv) 
           }
           for (const fieldName in resolverFieldCheckers) {
             const resolvedFieldChecker = resolverFieldCheckers[fieldName]
-            if (!(await checkResolvedField(parent, args, context, info, resolvedFieldChecker, checkers, fieldName)))
+            if (!(await checkResolvedField(parent, args, context, info, resolvedFieldChecker, checkers, fieldName))) -f
           }
 
 

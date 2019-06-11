@@ -39,13 +39,15 @@ function getCheckType(mainResult, typename) {
     .reduce((result, action) => {
       const typeResult = mainResult[typename]
       if (typeResult._permCheckers._type[action]) {
-        const typeChecker = typeResult._permCheckers._type[action]
+        const checkerFns = [
+          typeResult._permCheckers._type[action],
+          typeResult._checkResolvers[action],
+        ]
+        if (['update', 'read'].includes(action)) {
+          checkerFns.push(typeResult._checkScalars[action])
+        }
         result[action] = async (...args) => {
-          return Promise.all([
-            await typeChecker(...args),
-            await typeResult._checkScalars(...args),
-            await typeResult._checkResolvers(...args),
-          ])
+          return Promise.all(checkerFns.map(async fn => await fn(...args)))
         }
       }
       return result
