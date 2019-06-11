@@ -9,60 +9,94 @@ export function getCheckers(properties, roleCheckers, checkPriv) {
     .keys(properties)
     .reduce((result, typeName: string) => {
       const crud = (_.get(properties,`${typeName}.crud`) || {})
-      result[typeName] = {}
+      const typeChecker:any = {}
 
       if (crud.c) {
         const action = "create"
         const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
-       result[typeName].c = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
+        typeChecker.c = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
       }
       if (crud.r) {
         const action = "read"
         const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
-        result[typeName].r = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
+        typeChecker.r = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
       }
       if (crud.u) {
         const action = "update"
         const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
-        result[typeName].u = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
+        typeChecker.u = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
       }
       if (crud.d) {
         const action = "delete"
         const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
-        result[typeName].d = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
+        typeChecker.d = getChecker(checkers, typeName, action, validators, properties, auth, 'type', null, roleCheckers, checkPriv)
       }
-      if (!Object.keys(result[typeName]).length) {
-        delete result[typeName]
+      if (!Object.keys(typeChecker).length) {
         return result
       }
 
-      result[typeName].fields = Object.entries(properties[typeName].fields)
-        .reduce((result, [fieldName, field]) => {
+      result[typeName] = typeChecker
+
+      result[typeName].scalarFields = Object.entries(properties[typeName].fields)
+        .reduce((result, [fieldName, field]: [string, any]) => {
+          if (field.resolve) return result
           const cAuth = _.get(field, 'crud.c')
           if (cAuth) {
-            result.c[fieldName] = getChecker(checkers, typeName, 'create', null, properties, cAuth, 'field', fieldName, roleCheckers, checkPriv)
+            result[fieldName].c = getChecker(checkers, typeName, 'create', null, properties, cAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           const rAuth =_.get(field, 'crud.r')
           if (rAuth) {
-            result.r[fieldName] = getChecker(checkers, typeName, 'read', null, properties, rAuth, 'field', fieldName, roleCheckers, checkPriv)
+            result[fieldName].r = getChecker(checkers, typeName, 'read', null, properties, rAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           const uAuth = _.get(field, 'crud.u')
           if (uAuth) {
-            result.u[fieldName] = getChecker(checkers, typeName, 'update', null, properties, uAuth, 'field', fieldName, roleCheckers, checkPriv)
+            result[fieldName].u = getChecker(checkers, typeName, 'update', null, properties, uAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           const dAuth = _.get(field, 'crud.d')
           if (dAuth) {
-            result.d[fieldName] = getChecker(checkers, typeName, 'delete', null, properties, dAuth, 'field', fieldName, roleCheckers, checkPriv)
+            result[fieldName].d = getChecker(checkers, typeName, 'delete', null, properties, dAuth, 'field', fieldName, roleCheckers, checkPriv)
           }
           return result
         }, {
           c: {},
           r: {},
           u: {},
-          d: {}
+          d: {},
         })
+
+      result[typeName].resolverFields = Object.entries(properties[typeName].fields)
+        .reduce((result, [fieldName, field]: [string, any]) => {
+          if (!field.resolve) return result
+          const resolveFields:any = {}
+          const cAuth = _.get(field, 'crud.c')
+          if (cAuth) {
+            resolveFields.c = getChecker(checkers, typeName, 'create', null, properties, cAuth, 'field', fieldName, roleCheckers, checkPriv)
+          }
+          const rAuth =_.get(field, 'crud.r')
+          if (rAuth) {
+            resolveFields.r = getChecker(checkers, typeName, 'read', null, properties, rAuth, 'field', fieldName, roleCheckers, checkPriv)
+          }
+          const uAuth = _.get(field, 'crud.u')
+          if (uAuth) {
+            resolveFields.u = getChecker(checkers, typeName, 'update', null, properties, uAuth, 'field', fieldName, roleCheckers, checkPriv)
+          }
+          const dAuth = _.get(field, 'crud.d')
+          if (dAuth) {
+            resolveFields.d = getChecker(checkers, typeName, 'delete', null, properties, dAuth, 'field', fieldName, roleCheckers, checkPriv)
+          }
+          if (Object.keys(resolveFields.length)) {
+            result[fieldName].resolveFields = resolveFields
+          }
+          return result
+        }, {})
       return result
     }, checkers)
+
+  Object.entries(checkers).forEach(([typeName, typeChecker]: [string, any]) => {
+    typeChecker.scalarFieldChecker.u = getScalarFieldChecker(typeName, properties, checkers, 'update')
+    typeChecker.scalarFieldChecker.c = getScalarFieldChecker(typeName, properties, checkers, 'create')
+    typeChecker.resolveFieldCheckers = getResolveFieldCheckers(typeName, properties, checkers)
+  }, {})
   return checkers
 }
 
@@ -97,8 +131,6 @@ function withValidationChecker(checker, name, action, validators, resource) {
 }
 
 function withAuthChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
-  if (resource === "field")
-    checker = withForeignChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName)
   if (auth.priv) {
     checker = withPrivChecker(auth.priv, checker, action, checkPriv, resource)
   }
@@ -111,71 +143,6 @@ function withAuthChecker(checkers, checker, typeName, action, properties, auth, 
   return checker
 }
 
-function withForeignChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName) {
-  const localProperties = _.get(properties, `${typeName}.fields.${fieldName}`)
-
-
-  if (!localProperties.resolve)
-    return checker
-
-  if (!["update", "create"].includes(action))
-    return checker
-
-  checker = withForeignTypeChecker(checkers, checker, action, localProperties, properties, typeName, fieldName)
-  checker = withForeignFieldChecker(checkers, checker, action, localProperties, properties, typeName, fieldName)
-
-  return checker
-}
-
-function withForeignTypeChecker(checkers, checker, action, localProperties, properties, typeName, fieldName) {
-  const actionChar = action.charAt(0)
-  const foreignTypeProps = properties[localProperties.type]
-  if (action === "update") {
-    if (!foreignTypeProps.crud.u) {
-      throw new Error(`There's no permission to update ${localProperties.type}, therefore, you cannot have an update permission for ${typeName}.${fieldName}`)
-    }
-  }
-  if (action === "create") {
-    if (!foreignTypeProps.crud.c) {
-      throw new Error(`There's no permission to create ${localProperties.type}, therefore, you cannot have a create permission for ${typeName}.${fieldName}`)
-    }
-  }
-  if (foreignTypeProps) {
-    return async (...args) => {
-      if (await checkers[localProperties.type][actionChar](...args))
-        return await checker(...args)
-    }
-  }
-}
-
-function withForeignFieldChecker(checkers, checker, action, localProperties, properties, typeName, fieldName) {
-  const foreignFieldName = getForeignFieldName(localProperties, properties)
-  const foreignFieldProps = properties[localProperties.type].fields[foreignFieldName]
-  if (action === "update" || action === "create") {
-    if (!foreignFieldProps.crud.u) {
-      throw new Error(`There's no relational permission to update ${localProperties.type}${(fieldName && ('.' + fieldName)) || ''}, therefore, you cannot have a ${action} permission for ${typeName}.${fieldName}`)
-    }
-  }
-  if (foreignFieldName) {
-    const actionChar = "u"
-    return async (parent, args, context, info) => {
-      if (checkers[localProperties.type].fields[foreignFieldName][actionChar](...args))
-
-        return await checker(parent, args[fieldName], context, info)
-    }
-  }
-  return checker
-}
-
-function getForeignFieldName(localProperties, properties) {
-  const foreignFieldsProps = properties[localProperties.type].fields
-  for (const foreignFieldKey in foreignFieldsProps) {
-    const foreignFieldProps = foreignFieldsProps[foreignFieldKey]
-    if(foreignFieldProps.type === localProperties.type &&
-      (!localProperties.relation.name || localProperties.relation.name === foreignFieldProps.relation.name))
-      return foreignFieldKey
-  }
-}
 
 function withFuncChecker(func, checker, action, resource) {
   return async (...args) => {
@@ -211,4 +178,86 @@ export function withRoleChecker(roles, checker, roleCheckers, resource) {
       if (hasRole) return true
     }
   }
+}
+
+function getScalarFieldChecker(typeName, properties, checkers, action) {
+  let scalarFieldCheckers;
+  if (action === "update") {
+    scalarFieldCheckers = checkers[typeName].scalarFields.u
+  } else if (action === "create") {
+    scalarFieldCheckers = checkers[typeName].scalarFields.c
+  }
+  return async (parent, args, context, info) => {
+    for (const fieldName in scalarFieldCheckers) {
+      const fieldChecker = scalarFieldCheckers[fieldName]
+      fieldChecker(args[fieldName])
+    }
+  }
+}
+
+function getResolveFieldCheckers(typeName, properties, checkers) {
+  const resolveFieldCheckers: any = {}
+  const resolveFields = checkers[typeName].resolveFields
+  for (const fieldName in resolveFields) {
+    const resolveFieldShallow = resolveFields[fieldName]
+    const foreignTypeName = properties[typeName][fieldName].type
+    const {scalarFieldCheckers} = checkers[foreignTypeName]
+    resolveFieldCheckers[fieldName] = async (parent, args, context, info) => {
+      for (const fieldName in resolveFieldCheckers) {
+        if (!args[fieldName]) continue
+        const fieldArg = args[fieldName]
+        const { create } = fieldArg
+        if (create) {
+          if (!resolveFieldCheckers[fieldName].c) {
+            return false
+          }
+          return (await Promise.all(
+              [
+                await resolveFieldShallow.c(args, create, context, info),
+                await resolveFieldCheckers[fieldName](args, create, context, info),
+                await scalarFieldCheckers(parent, args, context, info),
+              ])
+            ).filter(Boolean).length === 2
+
+        }
+        const { connect } = fieldArg
+        if (connect) {
+          if (!resolveFieldShallow.u) {
+            return false
+          }
+          return await resolveFieldShallow.u(parent, args, context, info)
+        }
+        const { disconnect } = fieldArg
+        if (disconnect) {
+          if (!resolveFieldShallow.d) {
+            return false
+          }
+          return await resolveFieldShallow.d(parent, args, context, info)
+        }
+        const { set } = fieldArg
+        if (set) {
+          if (!resolveFieldShallow.u || !resolveFieldShallow.d) {
+            return false
+          }
+          return (await Promise.all(
+            [await resolveFieldShallow.u(parent, args, context, info),
+            await resolveFieldShallow.d(parent, args, context, info)])).filter(Boolean).length === 2
+        }
+        throw new Error('Couldn\'t find that action.')
+      }
+    }
+  }
+  return resolveFieldCheckers
+}
+
+function withScalarFieldCheckers(checker, scalarFieldCheckers) {
+  return async (parent, args, context, info) => {
+    if (!await scalarFieldCheckers(parent, args, context, info))
+      return false
+    return await checker(parent, args, context, info)
+  }
+}
+
+function withResolveFieldCheckers(checker, typeName, checkers) {
+
 }
