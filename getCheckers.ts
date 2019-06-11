@@ -1,13 +1,18 @@
 import _ from 'lodash'
 import { createValidators } from './createValidators';
 
-export function getCheckers(properties, roleCheckers, checkPriv) {
+export function getCheckers(options) {
+  const properties = options.properties
+  if (!properties) {
+    throw new Error('Please pass a properties object, see docs for more info.')
+  }
   const validators = createValidators(properties)
   const checkers = {}
 
   Object
     .keys(properties)
     .reduce((result, typeName: string) => {
+      result[typeName] = getChecker(properties, validators, typeName)
       const crud = (_.get(properties,`${typeName}.crud`) || {})
       const typeChecker:any = {}
 
@@ -100,83 +105,138 @@ export function getCheckers(properties, roleCheckers, checkPriv) {
   return checkers
 }
 
-
-function getChecker(checkers, typeName, action, validators, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
-  let checker = () => false
-  checker = withAuthChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName, roleCheckers, checkPriv)
-  checker =  withValidationChecker(checker, typeName, action, validators, resource)
-  return checker
+function getChecker(options, properties, validators, typeName) {
+  return {
+    create: getCreateChecker(options, properties, validators, typeName),
+    read: getReadChecker(properties, validators, typeName),
+    update: getUpdateChecker(properties, validators, typeName),
+    delete: getDeleteChecker(properties, validators, typeName),
+  }
 }
 
-function withValidationChecker(checker, name, action, validators, resource) {
-  if (action === "delete" || action === "read" || resource === "field")
-    return checker
-  const { validation } = validators[name]
-  if (!validation) {
-    return checker
+function getCreateChecker(options, properties, validators, typeName) {
+  const checkerPromises = []
+  const crudProperties = (_.get(properties,`${typeName}.crud`) || {})
+  const cProperties = crudProperties.c
+  if (!cProperties) {
+    return () => {
+      throw new Error("That function is forbidden")
+    }
   }
-  return async (parent, args, context, info) => {
+  const action = "create"
+  const validationChecker = getValidationChecker(validators, typeName, action)
+  if (validationChecker) checkerPromises.push(validationChecker)
+  const permissionsChecker = getPermissionsChecker(options, properties, typeName, action)
+  if (permissionsChecker) checkerPromises.push(permissionsChecker)
+}
+
+function getReadChecker(properties, validators, typeName) {
+
+}
+
+function getUpdateChecker(properties, validators, typeName) {
+
+}
+
+function getDeleteChecker(properties, validators, typeName) {
+
+}
+
+// function getChecker(checkers, typeName, action, validators, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
+//   let checker = () => false
+//   checker = withAuthChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName, roleCheckers, checkPriv)
+//   checker =  withValidationChecker(checker, typeName, action, validators, resource)
+//   return checker
+// }
+
+function getValidationChecker(validators, typeName, action) {
+  const { validation } = validators[typeName]
+  if (!validation) {
+    return
+  }
+  const isUpdate = action === "update"
+  return (parent, args, context, info) => {
     for (const key in validation) {
       const validator = validation[key]
-      const datum = args.data[key]
+      const data = args.data || args
+      const datum = data[key]
       if (!datum)
         continue
-      const errors = validator(datum, action === "update")
+      const errors = validator(datum, isUpdate)
       if (errors.length) {
-        throw new Error(errors.join('\n'))
+        return [false, new Error(`There were errors on ${typeName} errors.join('\n'))`]
       }
     }
-    return await checker(parent, args, context, info)
   }
 }
 
-function withAuthChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
+function getPermissionsChecker(properties, typeName, action, options) {
+  const permissionsCheckers = []
+  const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
   if (auth.priv) {
-    checker = withPrivChecker(auth.priv, checker, action, checkPriv, resource)
+    const privChecker = getPrivChecker(auth.priv, options.checkPriv)
+    permissionsCheckers.push(privChecker)
   }
   if (auth.role) {
-    checker = withRoleChecker(auth.role, checker, roleCheckers, resource)
+    const roleChecker = getRoleChecker(auth.role, options.roleCheckers)
+    permissionsCheckers.push(roleChecker)
   }
-  if (auth.func) {
-    checker = withFuncChecker(auth.func, checker, action, resource)
+  // if (auth.func) {
+  //   checker = withFuncChecker(auth.func, checker, action, resource)
+  // }
+  return async (...args) {
+    const allowed = await Promise.all(permissionsCheckers.map(checker => checker(...args)))
+    if(allowed.some(Boolean)) {
+      throw new Error(`You do not have permission to ${action} ${typeName}`)
+    }
   }
-  return checker
 }
 
 
-function withFuncChecker(func, checker, action, resource) {
+// function withAuthChecker(checkers, checker, typeName, action, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
+//   if (auth.priv) {
+//     checker = withPrivChecker(auth.priv, checker, action, checkPriv, resource)
+//   }
+//   if (auth.role) {
+//     checker = withRoleChecker(auth.role, checker, roleCheckers, resource)
+//   }
+//   if (auth.func) {
+//     checker = withFuncChecker(auth.func, checker, action, resource)
+//   }
+//   return checker
+// }
+
+
+// function withFuncChecker(func, checker, action, resource) {
+//   return async (...args) => {
+//     for (let i = 0; i < func.length; i++) {
+//       if (await func(...args))
+//         return true
+//     }
+//     return await checker(...args)
+//   }
+// }
+
+function getPrivChecker(privs, checkPriv) {
   return async (...args) => {
-    for (let i = 0; i < func.length; i++) {
-      if (await func(...args))
-        return true
-    }
-    return await checker(...args)
-  }
-}
-
-function withPrivChecker(privs, checker, action, checkPriv, resource) {
-  return async (parent, args, context, info) => {
     const allowed = await Promise.all(privs.map(async priv => {
-      return await checkPriv(parent, args, context, info, action)
+      return await checkPriv(...args)
     }))
-    if (allowed.some(Boolean)) {
-      return await checker(parent, args, context, info)
-    }
+    return allowed.some(Boolean)
   }
 }
 
-export function withRoleChecker(roles, checker, roleCheckers, resource) {
+function getRoleChecker(roles, roleCheckers) {
   roles.forEach(role => {
     if (!roleCheckers[role]) {
       throw new Error("Could not find that role")
     }
   })
   return async (...args) => {
-    for (let i = 0; i < roles.length; i++) {
-      const checkRole = roleCheckers[roles[i]]
-      const hasRole = await checkRole(...args)
-      if (hasRole) return true
-    }
+    const allowed = await Promise.all(roles.map(async role => {
+      return await roleCheckers[role](...args)
+    }))
+    return allowed.some(Boolean)
   }
 }
 
@@ -248,16 +308,4 @@ function getResolveFieldCheckers(typeName, properties, checkers) {
     }
   }
   return resolveFieldCheckers
-}
-
-function withScalarFieldCheckers(checker, scalarFieldCheckers) {
-  return async (parent, args, context, info) => {
-    if (!await scalarFieldCheckers(parent, args, context, info))
-      return false
-    return await checker(parent, args, context, info)
-  }
-}
-
-function withResolveFieldCheckers(checker, typeName, checkers) {
-
 }
