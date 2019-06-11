@@ -11,11 +11,12 @@ export function getCheckers(options) {
 
   Object
     .keys(properties)
-    .reduce((result, typeName: string) => {
-      result[typeName]._validationCheckers = getValidationCheckers(validators, typeName)
-      result[typeName]._permCheckers = {
-        _types: getTypePermCheckers(options, properties, typeName),
-        _scalarFields: getScalarPermCheckers(options, properties, typeName),
+    .reduce((result, typename: string) => {
+      result[typename]._validationCheckers = getValidationCheckers(validators, typename)
+      result[typename]._permCheckers = {
+        _types: getTypePermCheckers(options, properties, typename),
+        _scalarFields: getScalarPermCheckers(options, properties, typename),
+        _resolverFields: getResolvePermCheckers(options, properties, typename),
       }
       return result
     }, {})
@@ -112,15 +113,16 @@ export function getCheckers(options) {
   return checkers
 }
 
-function getTypePermCheckers(options, properties, typeName) {
+function getTypePermCheckers(options, properties, typename) {
   return ['create', 'read', 'update', 'delete'].reduce((result, action) => {
-    const crudProperties = (_.get(properties,`${typeName}.crud.${action.charAt(0)}`))
-    if (!crudProperties) {
+    const errMessage = `You do not have permission to ${action} ${typename}`
+    const auth = (_.get(properties,`${typename}.crud.${action.charAt(0)}`))
+    if (!auth) {
       return () => {
-        throw new Error("That function is forbidden")
+        throw new Error(errMessage)
       }
     }
-    result[action] = getPermChecker(options, crudProperties)
+    result[action] = getPermChecker(options, auth, errMessage)
   }, {})
 }
 
@@ -128,14 +130,37 @@ function getScalarPermCheckers(options, properties, typename) {
   ['update', 'read'].reduce((result, action) => {
     const actionResult = {}
     for (const fieldname in properties[typename]) {
-      const crudProperties = (_.get(properties,`${typename}.${fieldname}.crud.${action.charAt(0)}`))
-      if (!crudProperties) continue
-      actionResult[fieldname] = getPermChecker(options, crudProperties)
+      const crudProperties = (_.get(properties,`${typename}.${fieldname}.crud`))
+      const auth = crudProperties[action.charAt(0)]
+      if (!auth || crudProperties.resolve) continue
+      const errMessage = `You do not have permission to ${action} ${typename}.${fieldname}`
+      actionResult[fieldname] = getPermChecker(options, auth, errMessage)
     }
 
     result[action] = actionResult
     return result
   })
+}
+
+function getResolvePermCheckers(options, properties, typename) {
+  const resolvePermCheckers = {}
+  for (const fieldname in properties[typename]) {
+    const crudProperties = (_.get(properties,`${typename}.${fieldname}.crud`))
+    if (!crudProperties || !crudProperties.resolve) continue
+    const fieldPermCheckers = ['create', 'read', 'update', 'delete'].reduce((result, action) => {
+      const errMessage = `You do not have permission to ${action} ${typename}.${fieldname}`
+      const auth = crudProperties[action.charAt(0)]
+      if (!auth) {
+        result[action] = () => {
+          throw new Error(errMessage)
+        }
+      }
+      result[action] = getPermChecker(options, auth, errMessage)
+      return result
+    }, {})
+    resolvePermCheckers[fieldname] = fieldPermCheckers
+  }
+  return resolvePermCheckers
 }
 
 // function getChecker(checkers, typeName, action, validators, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
@@ -146,7 +171,7 @@ function getScalarPermCheckers(options, properties, typename) {
 // }
 
 
-function getPermChecker(options, auth) {
+function getPermChecker(options, auth, errMessage) {
   const permissionsCheckers = []
   if (auth.priv) {
     const privChecker = getPrivChecker(auth.priv, options.checkPriv)
@@ -162,7 +187,7 @@ function getPermChecker(options, auth) {
   return async (...args) {
     const allowed = await Promise.all(permissionsCheckers.map(checker => checker(...args)))
     if(allowed.some(Boolean)) {
-      throw new Error(`You do not have permission to ${action} ${typeName}`)
+      throw new Error(errMessage)
     }
   }
 }
