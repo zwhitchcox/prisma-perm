@@ -13,7 +13,10 @@ export function getCheckers(options) {
     .keys(properties)
     .reduce((result, typeName: string) => {
       result[typeName]._validationCheckers = getValidationCheckers(validators, typeName)
-      result[typeName]._typeCheckers = getTypeCheckers(options, properties, typeName)
+      result[typeName]._permCheckers = {
+        _types: getTypePermCheckers(options, properties, typeName),
+        _scalarFields: getScalarPermCheckers(options, properties, typeName),
+      }
       return result
     }, {})
 
@@ -109,20 +112,30 @@ export function getCheckers(options) {
   return checkers
 }
 
-function getTypeCheckers(options, properties, typeName) {
+function getTypePermCheckers(options, properties, typeName) {
   return ['create', 'read', 'update', 'delete'].reduce((result, action) => {
-    result[action] = getTypeChecker(options, properties, typeName, action)
-    return result
+    const crudProperties = (_.get(properties,`${typeName}.crud.${action.charAt(0)}`))
+    if (!crudProperties) {
+      return () => {
+        throw new Error("That function is forbidden")
+      }
+    }
+    result[action] = getPermChecker(options, crudProperties)
   }, {})
 }
-function getTypeChecker(options, properties, typeName, action) {
-  const crudProperties = (_.get(properties,`${typeName}.crud.${action.charAt(0)}`))
-  if (!crudProperties) {
-    return () => {
-      throw new Error("That function is forbidden")
+
+function getScalarPermCheckers(options, properties, typename) {
+  ['update', 'read'].reduce((result, action) => {
+    const actionResult = {}
+    for (const fieldname in properties[typename]) {
+      const crudProperties = (_.get(properties,`${typename}.${fieldname}.crud.${action.charAt(0)}`))
+      if (!crudProperties) continue
+      actionResult[fieldname] = getPermChecker(options, crudProperties)
     }
-  }
-  return getPermissionsChecker(options, properties, typeName, action)
+
+    result[action] = actionResult
+    return result
+  })
 }
 
 // function getChecker(checkers, typeName, action, validators, properties, auth, resource, fieldName, roleCheckers, checkPriv) {
@@ -133,9 +146,8 @@ function getTypeChecker(options, properties, typeName, action) {
 // }
 
 
-function getPermissionsChecker(properties, typeName, action, options) {
+function getPermChecker(options, auth) {
   const permissionsCheckers = []
-  const auth = _.get(properties,`${typeName}.crud.${action.charAt(0)}`)
   if (auth.priv) {
     const privChecker = getPrivChecker(auth.priv, options.checkPriv)
     permissionsCheckers.push(privChecker)
