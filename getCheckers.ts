@@ -1,6 +1,5 @@
 import _ from 'lodash'
 import { createValidators } from './createValidators';
-import { check } from 'prettier';
 
 export function getCheckers(options) {
   const properties = options.properties
@@ -27,9 +26,30 @@ export function getCheckers(options) {
     for (const typename in checkers) {
       const typeResult = checkers[typename]
       typeResult._checkResolvers = getCheckResolvers(checkers, properties, typename)
-      typeResult.checkType = getCheckType(mainResult, typeResult, properties)
+    }
+    for (const typename in checkers) {
+      const typeResult = checkers[typename]
+      typeResult.checkType = getCheckType(checkers, typename)
     }
   return checkers
+}
+
+function getCheckType(mainResult, typename) {
+  return ['create', 'read', 'update', 'delete']
+    .reduce((result, action) => {
+      const typeResult = mainResult[typename]
+      if (typeResult._permCheckers._type[action]) {
+        const typeChecker = typeResult._permCheckers._type[action]
+        result[action] = async (...args) => {
+          return Promise.all([
+            await typeChecker(...args),
+            await typeResult._checkScalars(...args),
+            await typeResult._checkResolvers(...args),
+          ])
+        }
+      }
+      return result
+    }, {})
 }
 
 function getTypePermCheckers(options, properties, typename) {
@@ -95,7 +115,7 @@ function getPermChecker(options, auth, errMessage) {
   // if (auth.func) {
   //   checker = withFuncChecker(auth.func, checker, action, resource)
   // }
-  return async (...args) {
+  return async (...args) => {
     const allowed = await Promise.all(permissionsCheckers.map(checker => checker(...args)))
     if(allowed.some(Boolean)) {
       throw new Error(errMessage)
@@ -148,7 +168,7 @@ function getValidationChecker(validators, typeName, action) {
         continue
       const errors = validator(datum, isUpdate)
       if (errors.length) {
-        throw new Error(`There were errors trying to ${action} ${typeName} errors.join('\n'))`
+        throw new Error(`There were errors trying to ${action} ${typeName} errors.join('\n'))`)
       }
     }
   }
