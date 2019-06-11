@@ -36,11 +36,10 @@ export async function getResolvers(options) {
 
       checkerFns.push(_permCheckers._type.read)
 
-      // TODO recursive check ASTs
       const requestedFields = info.fieldASTs.map(field => field.name.value)
       for (const fieldname in requestedFields) {
         const checkerFn = _permCheckers._scalarFields[fieldname] || _permCheckers.resolverFields[fieldname]
-        checkerFns.push(checkerFn.read)
+        if (checkerFn.read) checkerFns.push(checkerFn.read)
       }
 
       Promise.all(checkerFns.map(async fn => await fn(parent, args, context, info)))
@@ -67,84 +66,28 @@ export async function getResolvers(options) {
       }
     }
 
-      if (typeResult._permCheckers._type[action]) {
-        const checkerFns = [
-          typeResult._permCheckers._type[action],
-          typeResult._permCheckers._scalarFields[action],
-          typeResult._checkResolvers[action],
-        ]
-        if (['update', 'create'].includes(action)) {
-          checkerFns.push(typeResult._checkScalars[action])
-        }
-
-
-
-    if (crud.c) {
-      const createChecker = typeChecker.c
-      const action = "create"
-      const fnName = `${action}${typeName}`
-      const resolver = genericData(fnName)
-      const scalarFieldChecker = getScalarFieldChecker(action, typeName, checkers)
-      checkApi(fnName, prisma)
-      resolvers.Mutation[fnName] = async (parent, args, context, info) => {
-        if (await createChecker(parent, args, context, info)) {
-          for (const fieldName in createFieldCheckers) {
-            const fieldChecker = createFieldCheckers[fieldName]
-            if (!(await fieldChecker(parent, args, context, info))) {
-              throw new Error("You do not have permission to do that")
-            }
-          }
-          for (const fieldName in resolverFieldCheckers) {
-            const resolvedFieldChecker = resolverFieldCheckers[fieldName]
-            if (!(await checkResolvedField(parent, args, context, info, resolvedFieldChecker, checkers, fieldName))) -f
-          }
-
-
-          return await resolver(parent, args, context, info)
-        }
-      }
-    }
-    if (crud.u) {
-      const updateChecker = typeChecker.u
-      const action = "update"
-      const fnName = `${action}${typeName}`
-      const resolver = generic(fnName)
-      const updateFieldCheckers = scalarFieldCheckers.u
-      checkApi(fnName, prisma)
-      resolvers.Mutation[fnName] = async (parent, args, context, info) => {
-        if (await updateChecker(parent, args, context, info)) {
-          for (const fieldName in updateFieldCheckers) {
-            const fieldChecker = updateFieldCheckers[fieldName]
-            if (!(await fieldChecker(parent, args, context, info))) {
-              throw new Error(`You do not have permission to ${action} ${typeName}.${fieldName}`)
-            }
-          }
-          return await resolver(parent, args, context, info)
-        }
-
-        throw new Error(`You do not have permission to do update ${typeName}`)
-      }
+    const genericResolverMap = {
+      create: genericData,
+      update: generic,
+      delete: genericWhere
     }
 
-    if (crud.d) {
-      const deleteChecker = typeChecker.u
-      const action = "delete"
-      const fnName = `${action}${typeName}`
-      const resolver = genericWhere(fnName)
-      const deleteFieldCheckers = scalarFieldCheckers.d
+    ;['create', 'update', 'delete'].forEach(action => {
+      const fnName = `${action}${typename}`
+      const resolver = genericResolverMap[action](fnName)
       checkApi(fnName, prisma)
-      resolvers.Mutation[fnName] = async (parent, args, context, info) => {
-        if (await deleteChecker(parent, args, context, info)) {
-          for (const fieldName in deleteFieldCheckers) {
-            const fieldChecker = deleteFieldCheckers[fieldName]
-            if (!(await fieldChecker(parent, args, context, info))) {
-              throw new Error("You do not have permission to do that")
-            }
-          }
-          return await resolver(parent, args, context, info)
-        }
+      const {_checkScalars, _checkResolvers} = checker
+      const promiseFns = []
+      if (['create', 'update'].includes(action)) {
+        promiseFns.push(_checkScalars[action])
+        promiseFns.push(_checkResolvers[action])
       }
-    }
+      resolvers.Mutation[fnName] = async (...args) => {
+        await _permCheckers._type[action](...args)
+        await Promise.all(promiseFns.map(async fn => await fn(...args)))
+        resolver(...args)
+      }
+    })
   }
   return resolvers
 }
@@ -158,27 +101,4 @@ function checkApi(name: string, prisma) {
 
 function lowercaseFirstLetter(word: string) {
   return word.charAt(0).toLowerCase() + word.slice(1)
-}
-
-async function checkResolvedField(parent, args, context, info, resolvedFieldChecker, checkers, fieldName) {
-  if (args[fieldName].create || args[fieldName].connect || args.fieldName.disconnect || args.fieldName.set) {
-    if (!await resolvedFieldChecker(parent, args, context, info))
-      throw new Error('You do not have permission to do that')
-
-  }
-}
-
-async function getScalarFieldChecker(action, typeName, checkers) {
-
-}
-
-async function checkScalarFields(parent, args, context, info, typeName, checkers) {
-
-          for (const fieldName in updateFieldCheckers) {
-            const fieldChecker = updateFieldCheckers[fieldName]
-            if (!(await fieldChecker(parent, args, context, info))) {
-              throw new Error(`You do not have permission to ${action} ${typeName}.${fieldName}`)
-            }
-          }
-          await checkScalarFields(parent, args, context, info, checkers, typeName, action)
 }

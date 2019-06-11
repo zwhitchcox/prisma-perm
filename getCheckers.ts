@@ -27,31 +27,7 @@ export function getCheckers(options) {
       const typeResult = checkers[typename]
       typeResult._checkResolvers = getCheckResolvers(checkers, properties, typename)
     }
-    for (const typename in checkers) {
-      const typeResult = checkers[typename]
-      typeResult.checkType = getCheckType(checkers, typename)
-    }
   return checkers
-}
-
-function getCheckType(mainResult, typename) {
-  return ['create', 'read', 'update', 'delete']
-    .reduce((result, action) => {
-      const typeResult = mainResult[typename]
-      if (typeResult._permCheckers._type[action]) {
-        const checkerFns = [
-          typeResult._permCheckers._type[action],
-          typeResult._checkResolvers[action],
-        ]
-        if (['update', 'read'].includes(action)) {
-          checkerFns.push(typeResult._checkScalars[action])
-        }
-        result[action] = async (...args) => {
-          return Promise.all(checkerFns.map(async fn => await fn(...args)))
-        }
-      }
-      return result
-    }, {})
 }
 
 function getTypePermCheckers(options, properties, typename) {
