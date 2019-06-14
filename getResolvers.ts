@@ -75,30 +75,21 @@ export async function getResolvers(options) {
       const fnName = `${action}${typename}`
       const resolver = genericResolverMap[action](fnName)
       checkApi(fnName, prisma)
-      const {_checkScalars, _checkResolvers} = checker
+      const {checkScalars, checkResolved} = checker
       const promiseFns = []
       if (['create', 'update'].includes(action)) {
-        promiseFns.push(_checkScalars[action])
-        if (typeof _checkScalars[action] === 'undefined') {
-          console.log(typename)
-        }
-        promiseFns.push(_checkResolvers)
-        if (typeof _checkResolvers === 'undefined') {
-          console.log(typename)
-        }
+        promiseFns.push(checkScalars[action])
+        promiseFns.push(checkResolved)
       }
-      console.log(typename)
-      for (let i = 0; i < promiseFns.length; i++) {
-        console.log(typeof promiseFns[i])
-      }
-      console.log('end', typename)
       resolvers.Mutation[fnName] = async (...args) => {
+        console.log(...args)
         await _permCheckers._type[action](...args)
         await Promise.all(promiseFns.map(async fn => {
           console.log(fnName)
           await fn(...args)
         }))
-        resolver(...args)
+
+        await resolver(...args)
       }
     })
   }

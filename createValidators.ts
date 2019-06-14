@@ -145,14 +145,18 @@ export function validate(props:any, input, isUpdate:any): string[] {
   }
 
   const mustContain = (props.mustContain && JSON.parse(JSON.stringify(props.mustContain)))
-  for (const char of input) {
-    if (!(char in props.validChars))
-      errors.push(`\`${char}\` is not a valid character`)
-    if (mustContain) {
-      for (const mustContainKey in mustContain) {
-        const toCheck = charTypes[mustContainKey]
-        if (char in toCheck)
-          delete mustContain[mustContainKey]
+  if (props.validChars || mustContain) {
+    for (const char of input) {
+      if (props.validChars) {
+        if (!(char in props.validChars))
+          errors.push(`\`${char}\` is not a valid character`)
+      }
+      if (mustContain) {
+        for (const mustContainKey in mustContain) {
+          const toCheck = charTypes[mustContainKey]
+          if (char in toCheck)
+            delete mustContain[mustContainKey]
+        }
       }
     }
   }

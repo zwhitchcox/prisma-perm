@@ -24,7 +24,7 @@ async function closeServer() {
   }
 }
 
-test('Update user graphql-yoga', async () => {
+test('Update user', async () => {
   server = await testServer()
   port = server.address().port
 
@@ -51,7 +51,7 @@ test('Update user graphql-yoga', async () => {
           firstName: 'Zane2',
         }
       }, user2)
-  ).rejects.toThrow('You do not have permission to do update User')
+  ).rejects.toThrow('You do not have permission to update User')
 
   updatedUser1 = await prisma.user({id: user1.id})
   expect(updatedUser1.firstName).toBe("Zane")
