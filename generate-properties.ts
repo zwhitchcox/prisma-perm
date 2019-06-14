@@ -105,7 +105,6 @@ export async function generate(graphqlString: string) {
         }
         if (!scalarTypes.includes(type)) {
           fieldResult.resolve = true
-          return fieldsResult
         }
 
         fieldResult.required = fieldDef.type.kind === "NonNullType"
