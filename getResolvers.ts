@@ -8,7 +8,7 @@ const generic = fnName => async (parent, args, context, info) => {
   return await context.prisma[fnName](args)
 }
 const genericWhere = fnName => async (parent, args, context, info) => {
-  return await context.prisma[fnName]()
+  return await context.prisma[fnName](args.where)
 }
 
 type FieldResolver = (parent: any, args: any, context: any, info: any) => any
@@ -34,15 +34,18 @@ export async function getResolvers(options) {
       const checkerFns = []
 
       checkerFns.push(_permCheckers._type.read)
+      const requestedFieldNames = getRequestedFieldNames(info)
 
-      const requestedFields = info.fieldASTs.map(field => field.name.value)
-      for (const fieldname in requestedFields) {
-        const checkerFn = _permCheckers._scalarFields[fieldname] || _permCheckers.resolverFields[fieldname]
-        if (checkerFn.read) checkerFns.push(checkerFn.read)
+      for (const fieldname of requestedFieldNames) {
+        const checkerFn = _permCheckers._scalarFields.read[fieldname] || _.get(_permCheckers, '_resolvedFields[fieldname].read')
+        if (checkerFn) checkerFns.push(checkerFn)
       }
 
-      Promise.all(checkerFns.map(async fn => await fn(parent, args, context, info)))
-        .then(() => resolver(parent, args, context, info))
+      await Promise.all(checkerFns.map(async fn => {
+        await fn(parent, args, context, info)
+      }))
+
+      return await resolver(parent, args, context, info)
     }
 
     resolvers[typename] = {}
@@ -103,4 +106,16 @@ function checkApi(name: string, prisma) {
 
 function lowercaseFirstLetter(word: string) {
   return word.charAt(0).toLowerCase() + word.slice(1)
+}
+
+function getRequestedFieldNames(info) {
+  const { operation } = info
+  const { selectionSet } = operation
+  const { selections:mainSelection } =  selectionSet
+  if (mainSelection.length > 1) {
+    throw new Error('You can only get one item at a time for now.')
+  }
+  const { selectionSet:fieldSelectionSet } = mainSelection[0]
+  const { selections:fieldSelections } = fieldSelectionSet
+  return fieldSelections.map(selection => selection.name.value)
 }

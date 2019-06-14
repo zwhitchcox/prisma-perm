@@ -18,7 +18,7 @@ export function getCheckers(options) {
       typeResult._permCheckers = {
         _type: getTypePermCheckers(options, properties, typename),
         _scalarFields: getScalarPermCheckers(options, properties, typename),
-        _resolverFields: getResolvePermCheckers(options, properties, typename),
+        _resolvedFields: getResolvedPermCheckers(options, properties, typename),
       }
       typeResult.checkScalars = getCheckScalars(typeResult) // check validation and scalar permissions
       return mainResult
@@ -73,7 +73,7 @@ function getScalarPermCheckers(options, properties, typename) {
   }, {})
 }
 
-function getResolvePermCheckers(options, properties, typename) {
+function getResolvedPermCheckers(options, properties, typename) {
   const resolvePermCheckers = {}
   for (const fieldname in properties[typename].fields) {
     const fieldProperties = _.get(properties,`${typename}.fields.${fieldname}`)

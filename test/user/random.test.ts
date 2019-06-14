@@ -83,7 +83,15 @@ test.only('read own data', async () => {
       id: user1.id
     }
   }, user1)
-  console.log('result', result)
+
+  await expect(
+    sendRequestAsUser(GET_USER_INFO_QUERY, {
+        where: {
+          id: user1.id
+        },
+      }, user2)
+  ).rejects.toThrow('You do not have permission to read User')
+  console.log('result', JSON.stringify(result))
 
 })
 
