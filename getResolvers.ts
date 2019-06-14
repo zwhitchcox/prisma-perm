@@ -1,6 +1,5 @@
 import _ from 'lodash'
 import { getCheckers } from "./getCheckers";
-import { IFieldResult } from './generate-properties';
 
 const genericData = fnName => async (parent, args, context, info) => {
   return await context.prisma[fnName](args.data)
@@ -80,11 +79,25 @@ export async function getResolvers(options) {
       const promiseFns = []
       if (['create', 'update'].includes(action)) {
         promiseFns.push(_checkScalars[action])
-        promiseFns.push(_checkResolvers[action])
+        if (typeof _checkScalars[action] === 'undefined') {
+          console.log(typename)
+        }
+        promiseFns.push(_checkResolvers)
+        if (typeof _checkResolvers === 'undefined') {
+          console.log(typename)
+        }
       }
+      console.log(typename)
+      for (let i = 0; i < promiseFns.length; i++) {
+        console.log(typeof promiseFns[i])
+      }
+      console.log('end', typename)
       resolvers.Mutation[fnName] = async (...args) => {
         await _permCheckers._type[action](...args)
-        await Promise.all(promiseFns.map(async fn => await fn(...args)))
+        await Promise.all(promiseFns.map(async fn => {
+          console.log(fnName)
+          await fn(...args)
+        }))
         resolver(...args)
       }
     })

@@ -1,12 +1,16 @@
 import { GraphQLServer } from 'graphql-yoga'
 import { roleCheckers, checkPriv } from './permissions';
-import jwt from 'jsonwebtoken'
 import { prisma } from './prisma/generated/prisma-client';
 import { properties } from './prisma/generated/perm/properties';
 import { getResolvers } from '../../getResolvers';
 
 export async function testServer() {
-  const derivedResolvers = await getResolvers(properties, prisma, roleCheckers, checkPriv)
+  const derivedResolvers = await getResolvers({
+    properties,
+    prisma,
+    roleCheckers,
+    checkPriv
+  })
 
   const resolvers = {
     Query: {
@@ -19,7 +23,7 @@ export async function testServer() {
   }
 
   const server = new GraphQLServer({
-    typeDefs: __dirname + '/schema.graphql',
+    typeDefs: './test/user/schema.graphql',
     resolvers,
     context: request => ({
       ...request,

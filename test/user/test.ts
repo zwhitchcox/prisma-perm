@@ -12,7 +12,7 @@ export async function runTests() {
       await fn()
       console.log(chalk.green('Passed ✓'))
     } catch (e) {
-      console.log(chalk.red(e))
+      console.error(chalk.red(e.stack))
       console.error(chalk.red('Failed :('))
     }
   }
@@ -29,3 +29,10 @@ export const log = (...args) => {
   console.log(chalk.cyan(match[0].slice(1, match[0].length - 1)))
   console.log(...args)
 }
+let hasRun = false
+process.on('beforeExit', () => {
+  if (!hasRun) {
+    hasRun = true
+    runTests()
+  }
+})

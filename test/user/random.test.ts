@@ -4,7 +4,7 @@ import { prisma } from "./prisma/generated/prisma-client";
 import uuid from 'uuid/v4'
 import { promisify } from "util";
 import expect from 'expect'
-import { after, test } from './test'
+import { after, test, runTests } from './test'
 
 
 const UPDATE_FIRST_NAME_MUTATION = `
@@ -19,7 +19,9 @@ let server, port;
 after(closeServer)
 
 async function closeServer() {
-  await promisify(server.close).call(server)
+  if (server) {
+    await promisify(server.close).call(server)
+  }
 }
 
 test('Update user graphql-yoga', async () => {

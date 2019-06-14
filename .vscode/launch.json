@@ -25,8 +25,21 @@
             "name": "User",
             "type": "node",
             "request": "launch",
-            "args": ["./test/user/test.ts"],
-            "runtimeArgs": ["-r", "ts-node/register"],
+            "args": ["./test/user/random.test.ts"],
+            "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
+            "cwd": "${workspaceRoot}",
+            "env": {
+                "DEBUG": "*"
+            },
+            "sourceMaps": true,
+            "protocol": "inspector",
+            "internalConsoleOptions": "openOnSessionStart"
+        },
+        {
+            "name": "User Compiled",
+            "type": "node",
+            "request": "launch",
+            "args": ["./dist/test/user/random.test.js"],
             "cwd": "${workspaceRoot}",
             "protocol": "inspector",
             "internalConsoleOptions": "openOnSessionStart"

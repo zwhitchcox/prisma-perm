@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es6",
     "outDir": "dist",
     "sourceMap": true,
     "noEmitOnError": false,
@@ -20,7 +20,8 @@
   },
   "files": [
     "index",
-    "generate-cli"
+    "generate-cli",
+    "./test/user/random.test.ts"
   ],
   "exclude": [
     "node_modules"

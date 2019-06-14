@@ -1,6 +1,7 @@
 import _ from 'lodash'
 import { createValidators } from './createValidators';
 
+
 export function getCheckers(options) {
   const properties = options.properties
   if (!properties) {
@@ -40,15 +41,16 @@ function getTypePermCheckers(options, properties, typename) {
       }
     }
     result[action] = getPermChecker(options, auth, errMessage)
+    return result
   }, {})
 }
 
 function getScalarPermCheckers(options, properties, typename) {
-  ['update', 'read'].reduce((result, action) => {
+  return ['update', 'read'].reduce((result, action) => {
     const actionResult = {}
     for (const fieldname in properties[typename]) {
-      const crudProperties = (_.get(properties,`${typename}.${fieldname}.crud`))
-      const auth = crudProperties[action.charAt(0)]
+      const crudProperties = _.get(properties,`${typename}.${fieldname}.crud`)
+      const auth = (crudProperties || {})[action.charAt(0)]
       if (!auth || crudProperties.resolve) continue
       const errMessage = `You do not have permission to ${action} ${typename}.${fieldname}`
       actionResult[fieldname] = getPermChecker(options, auth, errMessage)
@@ -56,13 +58,13 @@ function getScalarPermCheckers(options, properties, typename) {
 
     result[action] = actionResult
     return result
-  })
+  }, {})
 }
 
 function getResolvePermCheckers(options, properties, typename) {
   const resolvePermCheckers = {}
-  for (const fieldname in properties[typename]) {
-    const crudProperties = (_.get(properties,`${typename}.${fieldname}.crud`))
+  for (const fieldname in properties[typename].fields) {
+    const crudProperties = _.get(properties,`${typename}.fields.${fieldname}.crud`)
     if (!crudProperties || !crudProperties.resolve) continue
     const fieldPermCheckers = ['create', 'read', 'update', 'delete'].reduce((result, action) => {
       const errMessage = `You do not have permission to ${action} ${typename}.${fieldname}`
@@ -93,9 +95,13 @@ function getPermChecker(options, auth, errMessage) {
   // if (auth.func) {
   //   checker = withFuncChecker(auth.func, checker, action, resource)
   // }
-  return async (...args) => {
-    const allowed = await Promise.all(permissionsCheckers.map(checker => checker(...args)))
-    if(allowed.some(Boolean)) {
+  return async (parent, args, context, info) => {
+    const allowed = await Promise.all(
+      permissionsCheckers.map(async checker => {
+        await checker(parent, args, context, info)
+    }))
+
+    if (allowed.some(Boolean)) {
       throw new Error(errMessage)
     }
   }
@@ -173,7 +179,7 @@ function getCheckScalars({_permCheckers, _validationCheckers}) {
 function getCheckResolvers(mainResult, properties, typename) {
   const typeResult = mainResult[typename]
   const resolverFieldCheckers: any = {}
-  const resolverFieldPermCheckers = typeResult._permCheckers_resolverFields
+  const resolverFieldPermCheckers = typeResult._permCheckers._resolverFields
   for (const fieldname in resolverFieldPermCheckers) {
     const foreignTypeName = properties[typename][fieldname].type
     const foreignResult = mainResult[foreignTypeName]
