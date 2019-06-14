@@ -82,10 +82,8 @@ export async function getResolvers(options) {
         promiseFns.push(checkResolved)
       }
       resolvers.Mutation[fnName] = async (...args) => {
-        console.log(...args)
         await _permCheckers._type[action](...args)
         await Promise.all(promiseFns.map(async fn => {
-          console.log(fnName)
           await fn(...args)
         }))
 
