@@ -12,12 +12,16 @@
             "internalConsoleOptions": "openOnSessionStart"
         },
         {
-            "name": "Social Network Server",
+            "name": "Generate",
             "type": "node",
             "request": "launch",
-            "args": ["./examples/social-network/server/server.ts"],
-            "runtimeArgs": ["-r", "ts-node/register"],
-            "cwd": "${workspaceRoot}",
+            "args": ["../../generate-cli.ts"],
+            "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
+            "cwd": "${workspaceRoot}/test/user",
+            "env": {
+                "DEBUG": "*"
+            },
+            "sourceMaps": true,
             "protocol": "inspector",
             "internalConsoleOptions": "openOnSessionStart"
         },
