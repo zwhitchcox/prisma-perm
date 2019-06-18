@@ -1,4 +1,4 @@
-type User  @r(roles: [SELF, FRIEND]) @u(role: SELF) {
+type User  @r(roles: [SELF, IS_FRIEND]) @u(role: SELF) {
   id: ID! @id
   firstName: String!
     @validation(preset: "name")
