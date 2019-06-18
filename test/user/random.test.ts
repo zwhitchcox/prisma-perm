@@ -92,8 +92,6 @@ test.only('read own data', async () => {
         },
       }, user2)
   ).rejects.toThrow('You do not have permission to read User')
-
-
 })
 
 const ADD_POST_MUTATION = `
@@ -103,7 +101,7 @@ const ADD_POST_MUTATION = `
     }
   }
 `
-test.skip('post to own wall', async () => {
+test.skip('post to own board', async () => {
   const user1 = await createTestUser()
   // await sendRequestAsUser()
 
@@ -140,7 +138,7 @@ async function createTestUser(info = {}) {
   const lastName = createRandomName()
   const username = firstName.toLowerCase()
   const email =  `${username}@gmail.com`
-  const wall = {
+  const board = {
     create: {
       posts: {
         create: []
@@ -154,7 +152,7 @@ async function createTestUser(info = {}) {
     username,
     email,
     password,
-    wall,
+    board,
   }
   return await prisma.createUser({
     ...defaultInfo,

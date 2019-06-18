@@ -1,5 +1,5 @@
 import { GraphQLServer } from 'graphql-yoga'
-import { roleCheckers, checkPriv } from './permissions';
+import { roleCheckers } from './permissions';
 import { prisma } from './prisma/generated/prisma-client';
 import { properties } from './prisma/generated/perm/properties';
 import { getResolvers } from '../../getResolvers';
@@ -8,8 +8,7 @@ export async function testServer() {
   const derivedResolvers = await getResolvers({
     properties,
     prisma,
-    roleCheckers,
-    checkPriv
+    roleCheckers
   })
 
   const resolvers = {

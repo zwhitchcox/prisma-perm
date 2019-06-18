@@ -14,13 +14,13 @@ type User  @r(roles: [SELF, FRIEND]) @u(role: SELF) {
   password: String!
     @validation(preset: "password")
   board: Board!
-    @r(roles: [SELF, FRIEND])
+    @r(roles: [SELF, IS_FRIEND])
   friends: [User!]!
     @u(roles: [
       HAS_FRIEND_REQUEST,
       AFTER_DELETE_FRIEND_REQUEST
     ])
-    @rd(role: FRIEND)
+    @rd(role: IS_FRIEND)
 }
 
 type FriendRequest @c(role: IS_SENDER) @rd(roles: [IS_SENDER, IS_RECIPIENT]) {

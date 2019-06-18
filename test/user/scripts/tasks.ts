@@ -24,12 +24,14 @@ export function toRun(name) {
 let run = 0
 process.on('beforeExit', async () => {
   if (!run++) {
+    if (!taskToRun) {
+      throw new Error('You must specify a task to run')
+    }
     console.log(taskToRun)
     runTasks([taskToRun])
   }
 })
 
-type TTask = [string, TDeps | TFunc]
 type TFunc =  () => void
 type TDeps = string | string[]
 
