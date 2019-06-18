@@ -1,3 +1,5 @@
+import _ from 'lodash'
+
 export const roleCheckers = {
   SELF: checkSelf,
   PRIVATE: checkPrivate,
@@ -16,7 +18,7 @@ export const roleCheckers = {
 
 
 export async function isFriend(parent, args, context, info) {
-  return true // TODO
+  return false // TODO
 }
 
 export async function afterDeleteFriendRequest(parent, args, context, info) {
@@ -65,7 +67,9 @@ export async function isRecipient(parent, args, context, info) {
 
 export async function isSender(parent, args, context, info) {
   const user = await context.getUser()
-  const {sender} = args.data
+  const sender = _.get(args, 'data.sender.connect') ||
+    _.get(args, 'data.sender')
+
   return isUser(user, sender)
 }
 

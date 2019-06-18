@@ -23,9 +23,17 @@ async function closeServer() {
 }
 
 async function deleteAllUsers() {
-  await prisma.deleteManyUsers({
-      id_not: 0
-  })
+  try {
+    await prisma.deleteManyFriendRequests({
+        id_not: 0
+    })
+    await prisma.deleteManyUsers({
+        id_not: 0
+    })
+  } catch (e) {
+    console.log(`Couldn't delete users`)
+    console.log(`${e.message}`)
+  }
 
 }
 
@@ -75,7 +83,7 @@ const GET_USER_INFO_QUERY = `
     }
   }
 `
-test.only('read own data', async () => {
+test('read own data', async () => {
   const user1 = await createTestUser()
   const user2 = await createTestUser()
   const result = await sendRequestAsUser(GET_USER_INFO_QUERY, {
@@ -92,6 +100,51 @@ test.only('read own data', async () => {
         },
       }, user2)
   ).rejects.toThrow('You do not have permission to read User')
+})
+
+const SEND_FRIEND_REQUEST_MUTATION = `
+  mutation SendFriendRequest($data: FriendRequestCreateInput!) {
+    createFriendRequest(data: $data) {
+      id
+      sender {
+        id
+        username
+      }
+      recipient {
+        id
+        username
+      }
+    }
+  }
+`
+test.only('add friend', async () => {
+  const user1 = await createTestUser()
+  const user2 = await createTestUser()
+  const result = await prisma.createFriendRequest({
+    sender: {
+      connect: {id: user1.id}
+    },
+    recipient: {
+      connect: {id: user2.id},
+    },
+  })
+  console.log(result)
+
+  // const result = await sendRequestAsUser(SEND_FRIEND_REQUEST_MUTATION, {
+  //   data: {
+  //     sender: {
+  //       connect: {id: user1.id}
+  //     },
+  //     recipient: {
+  //       connect: {id: user2.id},
+  //     },
+  //   },
+  // }, user1)
+  // expect(result.sender.id).toBe(user1.id)
+  // expect(result.sender.username).toBe(user1.username)
+  // expect(result.recipient.username).toBe(user2.username)
+  // expect(result.recipient.id).toBe(user2.id)
+
 })
 
 const ADD_POST_MUTATION = `

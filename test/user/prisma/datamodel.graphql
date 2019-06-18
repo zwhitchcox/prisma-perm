@@ -21,12 +21,16 @@ type User  @r(roles: [SELF, IS_FRIEND]) @u(role: SELF) {
       AFTER_DELETE_FRIEND_REQUEST
     ])
     @rd(role: IS_FRIEND)
+  sentFriendRequests: [FriendRequest!]! @relation(name: "Sender")
+  receivedFriendRequests: [FriendRequest!]! @relation(name: "Recipient")
 }
 
 type FriendRequest @c(role: IS_SENDER) @rd(roles: [IS_SENDER, IS_RECIPIENT]) {
   id: ID! @id
   sender: User! @relation(name: "Sender")
+    @u(roles: IS_SENDER)
   recipient: User! @relation(name: "Recipient")
+    @u(role: IS_SENDER)
 }
 
 type Board {
