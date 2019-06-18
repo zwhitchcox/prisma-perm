@@ -31,16 +31,13 @@ export async function getResolvers(options) {
     const resolver = genericWhere(fnName)
     const {_permCheckers} = checker
     resolvers.Query[fnName] = async (parent, args, context, info) => {
+      const requestedFieldNames = getReadFieldNames(parent, args, context, info)
       const checkerFns = []
-
       checkerFns.push(_permCheckers._type.read)
-      const requestedFieldNames = getRequestedFieldNames(info)
-
       for (const fieldname of requestedFieldNames) {
         const checkerFn = _permCheckers._scalarFields.read[fieldname] || _.get(_permCheckers, '_resolvedFields[fieldname].read')
         if (checkerFn) checkerFns.push(checkerFn)
       }
-
       await Promise.all(checkerFns.map(async fn => {
         await fn(parent, args, context, info)
       }))
@@ -53,18 +50,19 @@ export async function getResolvers(options) {
       const resolver = async (parent, args, context, info) => {
         return await context.prisma[fnName]({id: parent.id})[fieldname]()
       }
-      const foreignTypeName = properties[typename][fieldname].type
-      const foreignChecker = checkers[foreignTypeName]
+      // const foreignTypeName = properties[typename][fieldname].type
+      // const foreignChecker = checkers[foreignTypeName]
       resolvers[typename][fieldname] = async (parent, args, context, info) => {
-        const checkerFns = []
-        const requestedFields = info.fieldASTs.map(field => field.name.value)
-        for (const fieldname in requestedFields) {
-          const checkerFn = foreignChecker._permCheckers._scalarFields[fieldname] || foreignChecker._permCheckers.resolverFields[fieldname]
-          checkerFns.push(checkerFn.read)
-        }
+        return await resolver(parent, args, context, info)
+      //   const checkerFns = []
+      //   const requestedFields = info.fieldASTs.map(field => field.name.value)
+      //   for (const fieldname in requestedFields) {
+      //     const checkerFn = foreignChecker._permCheckers._scalarFields[fieldname] || foreignChecker._permCheckers.resolverFields[fieldname]
+      //     checkerFns.push(checkerFn.read)
+      //   }
 
-        Promise.all(checkerFns.map(async fn => await fn(parent, args, context, info)))
-          .then(() => resolver(parent, args, context, info))
+      //   Promise.all(checkerFns.map(async fn => await fn(parent, args, context, info)))
+      //     .then(() => resolver(parent, args, context, info))
       }
     }
 
@@ -108,7 +106,7 @@ function lowercaseFirstLetter(word: string) {
   return word.charAt(0).toLowerCase() + word.slice(1)
 }
 
-function getRequestedFieldNames(info) {
+function getReadFieldNames(parent, args, context, info) {
   const { operation } = info
   const { selectionSet } = operation
   const { selections:mainSelection } =  selectionSet

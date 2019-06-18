@@ -43,10 +43,14 @@
             "name": "User Compiled",
             "type": "node",
             "request": "launch",
-            "args": ["./dist/test/user/random.test.js"],
-            "cwd": "${workspaceRoot}",
-            "protocol": "inspector",
-            "internalConsoleOptions": "openOnSessionStart"
+            "program": "${workspaceRoot}/test/user/random.test.ts",
+            "skipFiles": [
+                "<node_internals>/**/*.js",
+                // "${workspaceRoot}/node_modules/**/*.js",
+            ],
+            "outFiles": [
+                "${workspaceRoot}/dist/**/*.js"
+            ]
         }
     ]
 }

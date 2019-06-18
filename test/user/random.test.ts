@@ -83,6 +83,7 @@ test.only('read own data', async () => {
       id: user1.id
     }
   }, user1)
+  expect(result.user.email).toBe(user1.email)
 
   await expect(
     sendRequestAsUser(GET_USER_INFO_QUERY, {
@@ -91,7 +92,7 @@ test.only('read own data', async () => {
         },
       }, user2)
   ).rejects.toThrow('You do not have permission to read User')
-  console.log('result', JSON.stringify(result))
+
 
 })
 
@@ -134,7 +135,7 @@ function sendRequestAsUser(query, variables, user?) {
     })
 }
 
-async function createTestUser(info? = {}) {
+async function createTestUser(info = {}) {
   const firstName = createRandomName()
   const lastName = createRandomName()
   const username = firstName.toLowerCase()

@@ -31,7 +31,7 @@ export async function runTests() {
       console.log(chalk.green('Passed ✓'))
     } catch (e) {
       console.error(chalk.red(e.stack))
-      console.error(chalk.red('Failed :('))
+      console.error(name, chalk.red('Failed :('))
     }
   }
   for (let i = 0; i < afters.length; i++) {
