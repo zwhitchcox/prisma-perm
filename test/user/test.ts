@@ -76,7 +76,7 @@ export async function runTests(items, onlys) {
         console.log(chalk.green(`Passed ✓ ${item.name}`))
       } catch (e) {
         console.error(chalk.red(e.stack))
-        console.error(name, chalk.red('Failed :('))
+        console.error(item.name, chalk.red('Failed :('))
       }
     } else if (item.type === "describe") {
       console.log(chalk.cyan(`${"#".repeat(depth)} ${item.name.toUpperCase()}`))

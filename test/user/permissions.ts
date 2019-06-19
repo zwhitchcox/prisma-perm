@@ -22,13 +22,21 @@ export async function isFriend(parent, args, context, info) {
 
 export async function acceptFriendRequest(parent, args, context, info) {
   const self = await context.getUser()
-  const newFriend = args.data.friends.connect.user
+  const newFriends = args.data.friends.connect
+  if (!(newFriends.length === 1)) {
+    throw new Error('You can only add one friend at a time.')
+  }
+  const newFriend = newFriends[0]
   const result = await context.prisma.deleteManyFriendRequests({
-    where: {
-        recipient: {id: self.id},
-        sender: {id: newFriend.id}
-      }
+    AND: [
+      {recipient: {id: self.id}},
+      {sender: {id: newFriend.id}}
+    ]
   })
+  if (result.count < 1) {
+    throw new Error('You do not have a friend request from that person.')
+  }
+  return true
 }
 
 export async function isRecipient(parent, args, context, info) {

@@ -103,10 +103,11 @@ test('read own data', async () => {
 
 
 describe.only('friend requests', () => {
-  let user1, user2;
+  let user1, user2, user3;
   before(async () => {
-    user1 = await createTestUser()
-    user2 = await createTestUser()
+    user1 = await createTestUser({}, "user1")
+    user2 = await createTestUser({}, "user2")
+    user3 = await createTestUser({}, "user3")
   })
 
   const SEND_FRIEND_REQUEST_MUTATION = `
@@ -167,18 +168,34 @@ describe.only('friend requests', () => {
     expect(friendRequest2.sender.username).toBe(user1.username)
     expect(friendRequest2.recipient.username).toBe(user2.username)
     expect(friendRequest2.recipient.id).toBe(user2.id)
+    await expect(sendRequestAsUser(FRIEND_REQUEST_INFO_QUERY, {
+      where: {
+        id: createFriendRequestId
+      }
+    }, user3)).rejects.toThrow('You do not have permission to read FriendRequest')
   })
 
   const ACCEPT_FRIEND_REQUEST_MUTATION = `
-    mutation AcceptFriendRequest ($where: UserWhereUniqueInput!, data: UserUpdateInput!) {
-      where: $where,
-      data: $data
-    } {
-
+    mutation AcceptFriendRequest ($where: UserWhereUniqueInput!, $data: UserUpdateInput!) {
+      updateUser(where: $where, data: $data) {
+      id
+      username
+      firstName
+      lastName
     }
+  }
   `
   test('accept friend request', async () => {
-
+    await sendRequestAsUser(ACCEPT_FRIEND_REQUEST_MUTATION, {
+      where: {
+        id: user2.id
+      },
+      data: {
+        friends: {
+          connect: {id: user1.id}
+        }
+      }
+    }, user2)
   })
 })
 
@@ -221,11 +238,11 @@ function sendRequestAsUser(query, variables, user?) {
     })
 }
 
-async function createTestUser(info = {}) {
+async function createTestUser(info = {}, prefix?) {
   const firstName = createRandomName()
   const lastName = createRandomName()
-  const username = firstName.toLowerCase()
-  const email =  `${username}@gmail.com`
+  const username = prefix + firstName.toLowerCase()
+  const email =  prefix + `${username}@gmail.com`
   const board = {
     create: {
       posts: {
