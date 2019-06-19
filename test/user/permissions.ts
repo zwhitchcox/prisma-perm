@@ -36,6 +36,15 @@ export async function acceptFriendRequest(parent, args, context, info) {
   if (result.count < 1) {
     throw new Error('You do not have a friend request from that person.')
   }
+  await context.prisma.updateUser({
+    where: {
+      id: newFriend.id
+    }, data: {
+      friends: {
+        connect: {id: self.id}
+      }
+    }
+  })
   return true
 }
 

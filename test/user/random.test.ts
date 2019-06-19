@@ -102,7 +102,7 @@ test('read own data', async () => {
 })
 
 
-describe.only('friend requests', () => {
+describe('friend requests', () => {
   let user1, user2, user3;
   before(async () => {
     user1 = await createTestUser({}, "user1")
@@ -132,6 +132,32 @@ describe.only('friend requests', () => {
       }, user1)
     createFriendRequestId = createFriendRequest.id
   })
+
+  // const SEND_FRIEND_REQUEST_AND_ACCESS_INFO_MUTATION = ` // TODO
+  //   mutation SendFriendRequest($data: FriendRequestCreateInput!) {
+  //     createFriendRequest(data: $data) {
+  //       id
+  //       recipient {
+
+  //       }
+  //     }
+  //   }
+  // `
+
+  // test("can't access sender information on create friend request", async () => {
+  //   const { createFriendRequest } =
+  //     await sendRequestAsUser(SEND_FRIEND_REQUEST_AND_ACCESS_INFO_MUTATION, {
+  //       data: {
+  //         sender: {
+  //           connect: {id: user1.id}
+  //         },
+  //         recipient: {
+  //           connect: {id: user2.id},
+  //         },
+  //       },
+  //     }, user1)
+  //   createFriendRequestId = createFriendRequest.id
+  // })
 
   const FRIEND_REQUEST_INFO_QUERY = `
     query FriendRequestInfo($where: FriendRequestWhereUniqueInput!) {
@@ -199,18 +225,39 @@ describe.only('friend requests', () => {
   })
 })
 
-const ADD_POST_MUTATION = `
-  mutation UpdateFirstName($where: UserWhereUniqueInput!, $data: UserUpdateInput!) {
-    updateUser(where: $where, data: $data) {
-      id
-    }
-  }
-`
-test.skip('post to own board', async () => {
-  const user1 = await createTestUser()
-  // await sendRequestAsUser()
+describe.only('Post to board', () => {
+  let user1, user2, user3;
+  before(async () => {
+    user1 = await createTestUser({}, "user1")
+    user2 = await createTestUser({}, "user2")
+    user3 = await createTestUser({}, "user3")
+  })
 
+  const ADD_POST_MUTATION = `
+    mutation AddPost($where: UserWhereUniqueInput!, $data: UserUpdateInput!) {
+      updateUser(where: $where, data: $data) {
+        id
+      }
+    }
+  `
+  const GET_BOARD_MUTATION = `
+    query GetBoard($where: UserWhereUniqueInput!) {
+      user(where: $where) {
+        board {
+          id
+        }
+      }
+    }
+  `
+  test('get own board id', async () => {
+    await sendRequestAsUser(ADD_POST_MUTATION, {
+
+
+    }, user2)
+
+  })
 })
+
 
 
 function sendRequestAsUser(query, variables, user?) {
