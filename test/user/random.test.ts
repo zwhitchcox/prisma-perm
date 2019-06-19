@@ -107,8 +107,6 @@ describe.only('friend requests', () => {
   before(async () => {
     user1 = await createTestUser()
     user2 = await createTestUser()
-    console.log(user1.id)
-    console.log(user2.id)
   })
 
   const SEND_FRIEND_REQUEST_MUTATION = `
@@ -119,7 +117,7 @@ describe.only('friend requests', () => {
     }
   `
   let createFriendRequestId;
-  test.only('send friend request', async () => {
+  test('send friend request', async () => {
     const { createFriendRequest } =
       await sendRequestAsUser(SEND_FRIEND_REQUEST_MUTATION, {
         data: {

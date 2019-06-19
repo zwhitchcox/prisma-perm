@@ -71,7 +71,7 @@ export async function runTests(items, onlys) {
     if (onlys.length && !onlys.includes(item.id)) continue
     if (item.type === "test") {
       try {
-        console.log(chalk.cyan(`${"#".repeat(depth)} Running ${item.name}`))
+        console.log(chalk.magenta(`${"#".repeat(depth)} Running ${item.name}`))
         await item.fn()
         console.log(chalk.green(`Passed ✓ ${item.name}`))
       } catch (e) {
