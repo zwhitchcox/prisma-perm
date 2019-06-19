@@ -12,6 +12,7 @@ export async function testServer() {
   })
 
   const resolvers = {
+    ...derivedResolvers,
     Query: {
       ...derivedResolvers.Query,
       // ...Query,

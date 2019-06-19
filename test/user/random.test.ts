@@ -4,7 +4,7 @@ import { prisma } from "./prisma/generated/prisma-client";
 import uuid from 'uuid/v4'
 import { promisify } from "util";
 import expect from 'expect'
-import { after, test, before } from './test'
+import { after, test, before, describe } from './test'
 
 
 
@@ -34,7 +34,6 @@ async function deleteAllUsers() {
     console.log(`Couldn't delete users`)
     console.log(`${e.message}`)
   }
-
 }
 
 const UPDATE_FIRST_NAME_MUTATION = `
@@ -102,49 +101,87 @@ test('read own data', async () => {
   ).rejects.toThrow('You do not have permission to read User')
 })
 
-const SEND_FRIEND_REQUEST_MUTATION = `
-  mutation SendFriendRequest($data: FriendRequestCreateInput!) {
-    createFriendRequest(data: $data) {
-      id
-      sender {
+
+describe.only('friend requests', () => {
+  let user1, user2;
+  before(async () => {
+    user1 = await createTestUser()
+    user2 = await createTestUser()
+    console.log(user1.id)
+    console.log(user2.id)
+  })
+
+  const SEND_FRIEND_REQUEST_MUTATION = `
+    mutation SendFriendRequest($data: FriendRequestCreateInput!) {
+      createFriendRequest(data: $data) {
         id
-        username
-      }
-      recipient {
-        id
-        username
       }
     }
-  }
-`
-test.only('add friend', async () => {
-  const user1 = await createTestUser()
-  const user2 = await createTestUser()
-  const result = await prisma.createFriendRequest({
-    sender: {
-      connect: {id: user1.id}
-    },
-    recipient: {
-      connect: {id: user2.id},
-    },
+  `
+  let createFriendRequestId;
+  test.only('send friend request', async () => {
+    const { createFriendRequest } =
+      await sendRequestAsUser(SEND_FRIEND_REQUEST_MUTATION, {
+        data: {
+          sender: {
+            connect: {id: user1.id}
+          },
+          recipient: {
+            connect: {id: user2.id},
+          },
+        },
+      }, user1)
+    createFriendRequestId = createFriendRequest.id
   })
-  console.log(result)
 
-  // const result = await sendRequestAsUser(SEND_FRIEND_REQUEST_MUTATION, {
-  //   data: {
-  //     sender: {
-  //       connect: {id: user1.id}
-  //     },
-  //     recipient: {
-  //       connect: {id: user2.id},
-  //     },
-  //   },
-  // }, user1)
-  // expect(result.sender.id).toBe(user1.id)
-  // expect(result.sender.username).toBe(user1.username)
-  // expect(result.recipient.username).toBe(user2.username)
-  // expect(result.recipient.id).toBe(user2.id)
+  const FRIEND_REQUEST_INFO_QUERY = `
+    query FriendRequestInfo($where: FriendRequestWhereUniqueInput!) {
+      friendRequest(where: $where) {
+        sender {
+          id
+          username
+        }
+        recipient {
+          id
+          username
+        }
+      }
+    }
 
+  `
+  test('get friend request info', async () => {
+    const {friendRequest} = await sendRequestAsUser(FRIEND_REQUEST_INFO_QUERY, {
+      where: {
+        id: createFriendRequestId
+      }
+    }, user1)
+    expect(friendRequest.sender.id).toBe(user1.id)
+    expect(friendRequest.sender.username).toBe(user1.username)
+    expect(friendRequest.recipient.username).toBe(user2.username)
+    expect(friendRequest.recipient.id).toBe(user2.id)
+
+    const {friendRequest: friendRequest2} = await sendRequestAsUser(FRIEND_REQUEST_INFO_QUERY, {
+      where: {
+        id: createFriendRequestId
+      }
+    }, user2)
+    expect(friendRequest2.sender.id).toBe(user1.id)
+    expect(friendRequest2.sender.username).toBe(user1.username)
+    expect(friendRequest2.recipient.username).toBe(user2.username)
+    expect(friendRequest2.recipient.id).toBe(user2.id)
+  })
+
+  const ACCEPT_FRIEND_REQUEST_MUTATION = `
+    mutation AcceptFriendRequest ($where: UserWhereUniqueInput!, data: UserUpdateInput!) {
+      where: $where,
+      data: $data
+    } {
+
+    }
+  `
+  test('accept friend request', async () => {
+
+  })
 })
 
 const ADD_POST_MUTATION = `

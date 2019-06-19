@@ -9,8 +9,7 @@ export const roleCheckers = {
   AUTHOR_FRIEND: checkAuthorFriend,
   IS_SENDER: isSender,
   IS_RECIPIENT: isRecipient,
-  HAS_FRIEND_REQUEST: hasFriendRequest,
-  AFTER_DELETE_FRIEND_REQUEST: afterDeleteFriendRequest,
+  ACCEPT_FRIEND_REQUEST: acceptFriendRequest,
   IS_FRIEND: isFriend,
 }
 // TODO make IS_ helper
@@ -21,56 +20,47 @@ export async function isFriend(parent, args, context, info) {
   return false // TODO
 }
 
-export async function afterDeleteFriendRequest(parent, args, context, info) {
+export async function acceptFriendRequest(parent, args, context, info) {
   const self = await context.getUser()
   const newFriend = args.data.friends.connect.user
-  await context.prisma.deleteManyFriendRequests({
+  const result = await context.prisma.deleteManyFriendRequests({
     where: {
-      OR: [{
         recipient: {id: self.id},
-        sender: {id: newFriend.id},
-        accepted: true,
-      },{
-        recipient: { id: newFriend.id },
-        sender: { id: self.id },
-        accepted: true,
-      }]
-    }
+        sender: {id: newFriend.id}
+      }
   })
-}
-
-export async function hasFriendRequest(parent, args, context, info) {
-  const self = await context.getUser()
-  const newFriend = args.data.friends.connect.user
-  if (!await context.prisma.$exists.friendRequest({
-    where: {
-      OR: [{
-        recipient: {id: self.id},
-        sender: {id: newFriend.id},
-        accepted: true,
-      },{
-        recipient: { id: newFriend.id },
-        sender: { id: self.id },
-        accepted: true,
-      }]
-    }
-  })) {
-    throw new Error('That user has not accepted your friend request')
-  }
 }
 
 export async function isRecipient(parent, args, context, info) {
   const user = await context.getUser()
   const {recipient} = args.where
-  return isUser(user, recipient)
+  if (recipient) {
+    return isUser(user, recipient)
+  }
+
+  const id = _.get(args, "where.id")
+  if (id) {
+    const recipient = await context.prisma.friendRequest({
+      id
+    }).recipient()
+    return isUser(user, recipient)
+  }
 }
 
 export async function isSender(parent, args, context, info) {
   const user = await context.getUser()
   const sender = _.get(args, 'data.sender.connect') ||
-    _.get(args, 'data.sender')
-
-  return isUser(user, sender)
+    args.where.sender
+  if (sender) {
+    return isUser(user, sender)
+  }
+  const id = _.get(args, "where.id")
+  if (id) {
+    const sender = await context.prisma.friendRequest({
+      id
+    }).sender()
+    return isUser(user, sender)
+  }
 }
 
 export async function checkAuthor(parent, args, context, info) {
