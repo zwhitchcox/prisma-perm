@@ -32,6 +32,8 @@
     "uuid": "^3.3.2"
   },
   "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.7",
     "apollo-server-testing": "^2.6.2",
     "ava": "^2.0.0",
     "bluebird": "^3.5.5",

@@ -13,6 +13,7 @@ type User  @r(roles: [SELF, IS_FRIEND]) @u(role: SELF) {
     @validation(preset: "username")
   password: String!
     @validation(preset: "password")
+    @ru(role: PRIVATE)
   board: Board!
     @r(roles: [SELF, IS_FRIEND])
   friends: [User!]!
@@ -23,13 +24,14 @@ type User  @r(roles: [SELF, IS_FRIEND]) @u(role: SELF) {
 type FriendRequest @c(role: IS_SENDER) @rd(roles: [IS_SENDER, IS_RECIPIENT]) {
   id: ID! @id
   sender: User! @relation(name: "Sender")
-    @u(roles: IS_SENDER)
+    @o(roles: IS_SENDER)
   recipient: User! @relation(name: "Recipient")
-    @u(role: IS_SENDER)
+    @o(role: IS_SENDER)
 }
 
 type Board {
   id: ID! @id,
+  user: User!, @relation(name: "Board")
   posts: [Post!]!
     @r(roles: [AUTHOR, AUTHOR_FRIEND]) @c(role: AUTHOR)
 }

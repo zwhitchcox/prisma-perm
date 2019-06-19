@@ -1,4 +1,3 @@
-
 import {
     parse,
     FieldDefinitionNode,
@@ -35,7 +34,7 @@ export interface IFieldResult {
   validation?: {
     [key: string]: string|number
   }
-  crud?: ICrud
+  crudio?: ICrudio
   type: string
   resolve?: boolean
   required?: boolean
@@ -49,6 +48,15 @@ export interface IObjResult {
     [key: string]: IFieldResult
   }
   crud?: ICrud
+}
+
+interface ICrudio {
+  c?: IPerm
+  r?: IPerm
+  u?: IPerm
+  d?: IPerm
+  i?: IPerm
+  o?: IPerm
 }
 
 interface ICrud {
@@ -117,10 +125,10 @@ export async function generate(graphqlString: string) {
               fieldResult.validation = directiveToObject(validationDirective)
             }
           }
-          const crudDirectives = fieldDef.directives
-            .filter(def => /^[crud]+$/.test(def.name.value))
-          if (crudDirectives.length) {
-            fieldResult.crud = getQualifiers(crudDirectives)
+          const crudioDirectives = fieldDef.directives
+            .filter(def => /^[crudio]+$/.test(def.name.value))
+          if (crudioDirectives.length) {
+            fieldResult.crudio = getQualifiers(crudioDirectives)
           }
           const privateDirective = fieldDef.directives
             .find(def => (def.name.value === "private"))
@@ -200,15 +208,25 @@ function checkIsList(type: any): boolean {
 }
 
 
+const letterActionMap = {
+  c: 'create',
+  r: 'read',
+  u: 'update',
+  d: 'delete',
+  i: 'disconnect',
+  o: 'connect',
+}
 
 function getQualifiers(crudDirectives) {
   return crudDirectives.reduce((result, crudDirective) => {
     const letters = crudDirective.name.value
     const qualifiers = directiveToObject(crudDirective)
     letters.split('').forEach(letter => {
-      result[letter] = result[letter] || {}
+      const action = letterActionMap[letter]
+      result[action] = result[action] || []
       for (const qualifierKey in qualifiers) {
-        result[letter][qualifierKey] = (result[letter][qualifierKey] || [])
+        if (!["role", "roles"].includes(qualifierKey)) continue
+        result[action] = (result[action] || [])
           .concat(qualifiers[qualifierKey])
       }
     })

@@ -5,25 +5,32 @@
             "name": "Current TS File",
             "type": "node",
             "request": "launch",
-            "args": ["${relativeFile}"],
-            "runtimeArgs": ["-r", "ts-node/register"],
-            "cwd": "${workspaceRoot}",
-            "protocol": "inspector",
-            "internalConsoleOptions": "openOnSessionStart"
+            "program": "${workspaceRoot}/${relativeFile}",
+            "skipFiles": [
+                "<node_internals>/**/*.js",
+                // "${workspaceRoot}/node_modules/**/*.js",
+            ],
+            "outFiles": [
+                "${workspaceRoot}/dist/**/*.js"
+            ]
         },
         {
             "name": "Generate",
             "type": "node",
             "request": "launch",
-            "args": ["../../generate-cli.ts"],
-            "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
+            "program": "${workspaceRoot}/generate-cli.ts",
             "cwd": "${workspaceRoot}/test/user",
+
             "env": {
-                "DEBUG": "*"
+                "FORCE_COLOR": "1"
             },
-            "sourceMaps": true,
-            "protocol": "inspector",
-            "internalConsoleOptions": "openOnSessionStart"
+            "skipFiles": [
+                "<node_internals>/**/*.js",
+                // "${workspaceRoot}/node_modules/**/*.js",
+            ],
+            "outFiles": [
+                "${workspaceRoot}/dist/**/*.js"
+            ]
         },
         {
             "name": "User",
@@ -44,6 +51,9 @@
             "type": "node",
             "request": "launch",
             "program": "${workspaceRoot}/test/user/random.test.ts",
+            "env": {
+                "FORCE_COLOR": "1"
+            },
             "skipFiles": [
                 "<node_internals>/**/*.js",
                 // "${workspaceRoot}/node_modules/**/*.js",

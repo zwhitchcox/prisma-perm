@@ -88,6 +88,7 @@ export function createValidators(properties: IObjs) {
     if (!obj.fields) return result
     result[type] = Object.entries(obj.fields)
       .reduce((fieldsResult, [fieldName, field]: [string, IFieldResult]) => {
+        if (field.resolve) return fieldsResult
         fieldsResult[fieldName] = createValidator(field, fieldName)
         return fieldsResult
       }, {})

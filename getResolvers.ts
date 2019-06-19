@@ -46,7 +46,7 @@ export async function getResolvers(options) {
     }
 
     resolvers[typename] = {}
-    for (const fieldname in _permCheckers.resolverFields) {
+    for (const fieldname in _permCheckers._resolvedFields) {
       const resolver = async (parent, args, context, info) => {
         return await context.prisma[fnName]({id: parent.id})[fieldname]()
       }
@@ -74,7 +74,7 @@ export async function getResolvers(options) {
 
     ;['create', 'update', 'delete'].forEach(action => {
       const fnName = `${action}${typename}`
-      const resolver = genericResolverMap[action](fnName)
+      let resolver = genericResolverMap[action](fnName)
       checkApi(fnName, prisma)
       const {checkScalars, checkResolved} = checker
       const promiseFns = []
@@ -88,7 +88,9 @@ export async function getResolvers(options) {
           await fn(...args)
         }))
 
-        await resolver(...args)
+        // const [parent, _args, context, info] = args
+        // console.log(getReadFieldNames(parent, _args, context, info))
+        return await resolver(...args)
       }
     })
   }

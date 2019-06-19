@@ -102,7 +102,7 @@ test('read own data', async () => {
 })
 
 
-describe('friend requests', () => {
+describe.only('friend requests', () => {
   let user1, user2, user3;
   before(async () => {
     user1 = await createTestUser({}, "user1")
@@ -225,7 +225,7 @@ describe('friend requests', () => {
   })
 })
 
-describe.only('Post to board', () => {
+describe.skip('Post to board', () => {
   let user1, user2, user3;
   before(async () => {
     user1 = await createTestUser({}, "user1")
@@ -234,27 +234,39 @@ describe.only('Post to board', () => {
   })
 
   const ADD_POST_MUTATION = `
-    mutation AddPost($where: UserWhereUniqueInput!, $data: UserUpdateInput!) {
+    mutation AddPost($where: UserWhereUniqueInput!, $data: UserUpdateInput!, $post: PostCreateInput!) {
       updateUser(where: $where, data: $data) {
-        id
       }
     }
   `
-  const GET_BOARD_MUTATION = `
-    query GetBoard($where: UserWhereUniqueInput!) {
-      user(where: $where) {
-        board {
-          id
+  // const GET_BOARD_MUTATION = `
+  //   query GetBoard($where: UserWhereUniqueInput!) {
+  //     user(where: $where) {
+  //       board {
+  //         id
+  //       }
+  //     }
+  //   }
+  // `
+  test.skip('get own board id', async () => {
+    await sendRequestAsUser(ADD_POST_MUTATION, {
+      where: {
+        id: user2.id
+      },
+      data: {
+        board: {
+          update: {
+            posts: [
+              {
+                create: {
+                  text: "This is my post"
+                }
+              }
+            ]
+          }
         }
       }
-    }
-  `
-  test('get own board id', async () => {
-    await sendRequestAsUser(ADD_POST_MUTATION, {
-
-
     }, user2)
-
   })
 })
 

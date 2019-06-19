@@ -1,7 +1,6 @@
 import _ from 'lodash'
 import { createValidators } from './createValidators';
 
-
 export function getCheckers(options) {
   const properties = options.properties
   if (!properties) {
@@ -16,9 +15,9 @@ export function getCheckers(options) {
 
       typeResult._validationCheckers = getValidationCheckers(validators, typename)
       typeResult._permCheckers = {
-        _type: getTypePermCheckers(options, properties, typename),
-        _scalarFields: getScalarPermCheckers(options, properties, typename),
-        _resolvedFields: getResolvedPermCheckers(options, properties, typename),
+        _type: getTypeRoleCheckers(options, properties, typename),
+        _scalarFields: getScalarRoleCheckers(options, properties, typename),
+        _resolvedFields: getResolvedRoleCheckers(options, properties, typename),
       }
       typeResult.checkScalars = getCheckScalars(typeResult) // check validation and scalar permissions
       return mainResult
@@ -38,34 +37,35 @@ function getCheckResolvedFields(checkers, properties, typename) {
   return async function checkResolvedFields(parent, args, context, info) {
     return Promise.all(keys.map(async fieldname => {
       if (!(fieldname in args.data)) return Promise.resolve()
-      await _resolvedFieldCheckers(parent, args, context, info)
+      await _resolvedFieldCheckers[fieldname](parent, args, context, info)
     }))
   }
 }
 
-function getTypePermCheckers(options, properties, typename) {
+function getTypeRoleCheckers(options, properties, typename) {
   return ['create', 'read', 'update', 'delete'].reduce((result, action) => {
     const errMessage = `You do not have permission to ${action} ${typename}`
-    const auth = (_.get(properties,`${typename}.crud.${action.charAt(0)}`))
+    const auth = (_.get(properties,`${typename}.crud.${action}`))
     if (!auth) {
-      return () => {
+      result[action] = () => {
         throw new Error(errMessage)
       }
+      return result
     }
-    result[action] = getPermChecker(options, auth, errMessage)
+    result[action] = getRoleChecker(options, auth, errMessage)
     return result
   }, {})
 }
 
-function getScalarPermCheckers(options, properties, typename) {
+function getScalarRoleCheckers(options, properties, typename) {
   return ['update', 'read'].reduce((result, action) => {
     const actionResult = {}
     for (const fieldname in properties[typename].fields) {
-      const crudProperties = _.get(properties,`${typename}.fields.${fieldname}.crud`)
-      const auth = (crudProperties || {})[action.charAt(0)]
-      if (!auth || crudProperties.resolve) continue
+      const auth = _.get(properties,`${typename}.fields.${fieldname}`)
+      const crud = (auth.crud || {})[action]
+      if (!crud || auth.resolve) continue
       const errMessage = `You do not have permission to ${action} ${typename}.${fieldname}`
-      actionResult[fieldname] = getPermChecker(options, auth, errMessage)
+      actionResult[fieldname] = getRoleChecker(options, auth, errMessage)
     }
 
     result[action] = actionResult
@@ -73,15 +73,15 @@ function getScalarPermCheckers(options, properties, typename) {
   }, {})
 }
 
-function getResolvedPermCheckers(options, properties, typename) {
-  const resolvePermCheckers = {}
+function getResolvedRoleCheckers(options, properties, typename) {
+  const resolveRoleCheckers = {}
   for (const fieldname in properties[typename].fields) {
     const fieldProperties = _.get(properties,`${typename}.fields.${fieldname}`)
-    const crudProperties = fieldProperties.crud
-    if (!crudProperties || !fieldProperties.resolve) continue
-    const fieldPermCheckers = ['create', 'read', 'update', 'delete'].reduce((result, action) => {
+    const crudioProperties = fieldProperties.crudio
+    if (!crudioProperties || !fieldProperties.resolve) continue
+    const fieldRoleCheckers = ['create', 'read', 'update', 'delete', 'disconnect', 'connect'].reduce((result, action) => {
       const errMessage = `You do not have permission to ${action} ${typename}.${fieldname}`
-      const auth = crudProperties[action.charAt(0)]
+      const auth = crudioProperties[action]
       if (!auth) {
         result[action] = function resolveError() {
           throw new Error(errMessage)
@@ -89,60 +89,27 @@ function getResolvedPermCheckers(options, properties, typename) {
         result[action].message = errMessage
         return result
       }
-      result[action] = getPermChecker(options, auth, errMessage)
+      result[action] = getRoleChecker(options, auth, errMessage)
       return result
     }, {})
-    resolvePermCheckers[fieldname] = fieldPermCheckers
+    resolveRoleCheckers[fieldname] = fieldRoleCheckers
   }
-  return resolvePermCheckers
+  return resolveRoleCheckers
 }
 
-function getPermChecker(options, auth, errMessage) {
-  const permissionsCheckers = []
-  if (auth.priv) {
-    const privChecker = getPrivChecker(auth.priv, options.checkPriv)
-    permissionsCheckers.push(privChecker)
-  }
-  if (auth.role) {
-    const roleChecker = getRoleChecker(auth.role, options.roleCheckers)
-    permissionsCheckers.push(roleChecker)
-  }
-  // if (auth.func) {
-  //   checker = withFuncChecker(auth.func, checker, action, resource)
-  // }
-  return async function permChecker(parent, args, context, info) {
-    const allowed = await Promise.all(
-      permissionsCheckers.map(async checker => {
-        return await checker(parent, args, context, info)
+function getRoleChecker(options, checkConstants, errMessage) {
+  checkConstants.forEach(checkConstant => {
+    if (!options.roleCheckers[checkConstant]) {
+      throw new Error(`Could not find the role ${checkConstant}.`)
+    }
+  })
+  return async function roleChecker(...args) {
+    const allowed = await Promise.all(checkConstants.map(async role => {
+      return await options.roleCheckers[role](...args)
     }))
-
     if (!allowed.some(Boolean)) {
       throw new Error(errMessage)
     }
-  }
-}
-
-
-function getPrivChecker(privs, checkPriv) {
-  return async (...args) => {
-    const allowed = await Promise.all(privs.map(async priv => {
-      return await checkPriv(...args)
-    }))
-    return allowed.some(Boolean)
-  }
-}
-
-function getRoleChecker(roles, roleCheckers) {
-  roles.forEach(role => {
-    if (!roleCheckers[role]) {
-      throw new Error("Could not find that role")
-    }
-  })
-  return async (...args) => {
-    const allowed = await Promise.all(roles.map(async role => {
-      return await roleCheckers[role](...args)
-    }))
-    return allowed.some(Boolean)
   }
 }
 
@@ -161,7 +128,7 @@ function getValidationCheckers(validators, typeName) {
           continue
         const errors = validator(datum, isUpdate)
         if (errors.length) {
-          throw new Error(`There were errors trying to ${action} ${typeName} errors.join('\n'))`)
+          throw new Error(`There were errors trying to ${action} ${typeName} ${errors.join('\n')}`)
         }
       }
     }
@@ -188,46 +155,67 @@ function getCheckScalars({_permCheckers, _validationCheckers}) {
 function getResolvedFieldCheckers(mainResult, properties, typename) {
   const typeResult = mainResult[typename]
   const resolvedFieldCheckers: any = {}
-  const resolvedFieldPermCheckers = typeResult._permCheckers._resolverFields
+  const resolvedFieldPermCheckers = typeResult._permCheckers._resolvedFields
   for (const fieldname in resolvedFieldPermCheckers) {
     const foreignTypeName = properties[typename].fields[fieldname].type
     const foreignResult = mainResult[foreignTypeName]
     const checkForeignScalars = foreignResult._checkScalars
     resolvedFieldCheckers[fieldname] = async (parent, args, context, info) => {
-      const fieldArg = args[fieldname]
+      const fieldArg = args.data[fieldname]
       const { create } = fieldArg
       if (create) {
+        const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.create`
         return (await Promise.all(
             [
               await resolvedFieldPermCheckers.create(parent, args, context, info),
               await checkForeignScalars.create(parent, create, context, info),
-              await mainResult[foreignTypeName]._checkResolved(parent, create, context, info), // TODO, probably a bug
+              await mainResult[foreignTypeName]
+                ._checkResolved(combinedParentName, args, context, info),
             ])
-          ).filter(Boolean).length === 2
-
+          ).every(Boolean)
       }
+      const { update } = fieldArg
+      if (update) {
+        const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.update`
+        return (await Promise.all(
+            [
+              await resolvedFieldPermCheckers.update(parent, args, context, info),
+              await checkForeignScalars.update(parent, create, context, info),
+              await mainResult[foreignTypeName]
+                ._checkResolved(combinedParentName, args, context, info),
+            ])
+          ).every(Boolean)
+      }
+      const { delete:mydel } = fieldArg
+      if (mydel) {
+        const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.delete`
+        return await resolvedFieldPermCheckers.delete(combinedParentName, args, context, info)
+      }
+
       const { connect } = fieldArg
       if (connect) {
-        if (!resolvedFieldPermCheckers.update) {
+        if (!resolvedFieldPermCheckers.connect) {
           return false
         }
-        return await resolvedFieldPermCheckers.update(parent, args, context, info)
+        return await resolvedFieldPermCheckers.connect(parent, args, context, info)
       }
+
       const { disconnect } = fieldArg
       if (disconnect) {
-        if (!resolvedFieldPermCheckers.delete) {
+        if (!resolvedFieldPermCheckers.disconnect) {
           return false
         }
-        return await resolvedFieldPermCheckers.delete(parent, args, context, info)
+        return await resolvedFieldPermCheckers.disconnect(parent, args, context, info)
       }
       const { set } = fieldArg
       if (set) {
-        if (!(resolvedFieldPermCheckers.update  && resolvedFieldPermCheckers.delete)) {
+        if (!(resolvedFieldPermCheckers.connect  && resolvedFieldPermCheckers.disconnect)) {
           return false
         }
         return (await Promise.all(
-          [await resolvedFieldPermCheckers.update(parent, args, context, info),
-          await resolvedFieldPermCheckers.update(parent, args, context, info)])).filter(Boolean).length === 2
+          [await resolvedFieldPermCheckers.connect(parent, args, context, info),
+          await resolvedFieldPermCheckers.disconnect(parent, args, context, info)])
+        ).every(Boolean)
       }
       throw new Error('Couldn\'t find that action.')
     }

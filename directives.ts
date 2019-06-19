@@ -25,7 +25,7 @@ const combinations = (str) => {
     return fn("", str, []);
 }
 
-export const crudDirectives = combinations("crud").map(getCrudDir).join("\n")
+export const crudDirectives = combinations("crudio").map(getCrudDir).join("\n")
 export const prismaDirectives =
 `
 scalar DateTime

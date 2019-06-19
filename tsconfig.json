@@ -15,13 +15,14 @@
     "lib": [
       "dom",
       "dom.iterable",
-      "esnext"
-    ],
+      "esnext",
+    ]
   },
   "files": [
     "index",
     "generate-cli",
-    "./test/user/random.test.ts"
+    "./test/user/random.test.ts",
+    "./test/user/scripts/scripts.ts"
   ],
   "exclude": [
     "node_modules"
