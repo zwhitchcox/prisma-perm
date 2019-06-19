@@ -102,7 +102,7 @@ test('read own data', async () => {
 })
 
 
-describe.only('friend requests', () => {
+describe('friend requests', () => {
   let user1, user2, user3;
   before(async () => {
     user1 = await createTestUser({}, "user1")

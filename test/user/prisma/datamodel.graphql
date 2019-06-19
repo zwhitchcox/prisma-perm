@@ -14,11 +14,12 @@ type User  @r(roles: [SELF, IS_FRIEND]) @u(role: SELF) {
   password: String!
     @validation(preset: "password")
     @ru(role: PRIVATE)
-  board: Board!
+  board: Board! @relation(name: "Board")
     @r(roles: [SELF, IS_FRIEND])
   friends: [User!]!
-    @u(role: ACCEPT_FRIEND_REQUEST)
-    @rd(role: IS_FRIEND)
+    @o(role: ACCEPT_FRIEND_REQUEST)
+    @ri(role: IS_FRIEND)
+  posts: [Post!]! @relation(name: "Posts")
 }
 
 type FriendRequest @c(role: IS_SENDER) @rd(roles: [IS_SENDER, IS_RECIPIENT]) {
@@ -30,9 +31,9 @@ type FriendRequest @c(role: IS_SENDER) @rd(roles: [IS_SENDER, IS_RECIPIENT]) {
 }
 
 type Board {
-  id: ID! @id,
-  user: User!, @relation(name: "Board")
-  posts: [Post!]!
+  id: ID! @id
+  user: User! @relation(name: "Board", link: INLINE)
+  posts: [Post!]! @relation(name: "BoardPosts")
     @r(roles: [AUTHOR, AUTHOR_FRIEND]) @c(role: AUTHOR)
 }
 
@@ -40,5 +41,6 @@ type Board {
 type Post @d(role: AUTHOR) {
   id: ID! @id
   text: String!
-  author: User!
+  board: Board! @relation(name: "BoardPosts")
+  author: User! @relation(name: "Posts")
 }

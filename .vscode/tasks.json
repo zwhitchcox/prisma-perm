@@ -1,0 +1,41 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+        "label": "Generate User Test Properties",
+        "type": "shell",
+        "command": "ts-node ${workspaceRoot}/generate-cli.ts",
+        "options": {
+          "cwd": "${workspaceRoot}/test/user",
+          "env": {
+              "FORCE_COLOR": "1"
+          }
+        },
+        "group": "build",
+        "presentation": {
+            "reveal": "always",
+            "panel": "new"
+        }
+
+    },
+    {
+      "label": "User Test Deploy",
+      "type": "shell",
+      "command": "ts-node ${workspaceRoot}/test/user/scripts/scripts.ts deploy",
+      "options": {
+        "cwd": "${workspaceRoot}/test/user",
+        "env": {
+            "FORCE_COLOR": "1",
+            "PRISMA_MANAGEMENT_API_SECRET": "my-secret"
+        }
+      },
+      "group": "test",
+      "presentation": {
+          "reveal": "always",
+          "panel": "dedicated"
+      }
+    }
+  ]
+}
