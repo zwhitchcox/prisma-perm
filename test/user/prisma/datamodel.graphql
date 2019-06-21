@@ -1,4 +1,4 @@
-type User  @r(roles: [SELF, IS_FRIEND]) @u(role: SELF) {
+type User  @r(roles: [SELF, IS_FRIEND, PROFILE_PUBLIC]) @u(role: SELF) {
   id: ID! @id
   firstName: String!
     @validation(preset: "name")
@@ -15,12 +15,13 @@ type User  @r(roles: [SELF, IS_FRIEND]) @u(role: SELF) {
     @validation(preset: "password")
     @ru(role: PRIVATE)
   board: Board! @relation(name: "Board", onDelete: CASCADE)
-    @r(roles: [SELF, IS_FRIEND])
+    @r(roles: [SELF, IS_FRIEND, BOARD_PUBLIC])
   friends: [User!]!
     @o(role: ACCEPT_FRIEND_REQUEST)
-    @i(role: REMOVE_FRIEND)
+    @i(role: [PASS_IS_FRIEND, REMOVE_FRIEND])
     @r(role: [SELF, IS_FRIEND])
   posts: [Post!]! @relation(name: "Posts")
+  public: Boolean!
 }
 
 type FriendRequest @c(role: IS_SENDER) @rd(roles: [IS_SENDER, IS_RECIPIENT]) {
@@ -35,7 +36,8 @@ type Board {
   id: ID! @id
   owner: User! @relation(name: "Board", link: INLINE)
   posts: [Post!]! @relation(name: "BoardPosts", onDelete: CASCADE)
-    @r(roles: [AUTHOR, AUTHOR_FRIEND])
+    @r(roles: [AUTHOR, AUTHOR_FRIEND, ENSURE_POSTS_PUBLIC])
+  public: Boolean!
 }
 
 
@@ -46,4 +48,5 @@ type Post @cd(role: AUTHOR) {
     @o(role: BOARD_OWNER)
   author: User! @relation(name: "Posts")
     @o(role: AUTHOR)
+  public: Boolean!
 }
