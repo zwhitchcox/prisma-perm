@@ -37,6 +37,9 @@ export async function testServer() {
         }
         return this.user
       },
+      _cache: {
+
+      }
     }),
     resolverValidationOptions: {
       requireResolversForResolveType: false

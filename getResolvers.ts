@@ -50,19 +50,9 @@ export async function getResolvers(options) {
       const resolver = async (parent, args, context, info) => {
         return await context.prisma[fnName]({id: parent.id})[fieldname]()
       }
-      // const foreignTypeName = properties[typename][fieldname].type
-      // const foreignChecker = checkers[foreignTypeName]
       resolvers[typename][fieldname] = async (parent, args, context, info) => {
+        await _permCheckers._resolvedFields[fieldname].read(parent, args, context, info)
         return await resolver(parent, args, context, info)
-      //   const checkerFns = []
-      //   const requestedFields = info.fieldASTs.map(field => field.name.value)
-      //   for (const fieldname in requestedFields) {
-      //     const checkerFn = foreignChecker._permCheckers._scalarFields[fieldname] || foreignChecker._permCheckers.resolverFields[fieldname]
-      //     checkerFns.push(checkerFn.read)
-      //   }
-
-      //   Promise.all(checkerFns.map(async fn => await fn(parent, args, context, info)))
-      //     .then(() => resolver(parent, args, context, info))
       }
     }
 
@@ -90,7 +80,8 @@ export async function getResolvers(options) {
 
         // const [parent, _args, context, info] = args
         // console.log(getReadFieldNames(parent, _args, context, info))
-        return await resolver(...args)
+        const result = await resolver(...args)
+        return result
       }
     })
   }
@@ -118,4 +109,10 @@ function getReadFieldNames(parent, args, context, info) {
   const { selectionSet:fieldSelectionSet } = mainSelection[0]
   const { selections:fieldSelections } = fieldSelectionSet
   return fieldSelections.map(selection => selection.name.value)
+}
+
+function arrayToOrList(array){
+  return array
+    .join(", ")
+    .replace(/, ((?:.(?!, ))+)$/, ' or $1');
 }

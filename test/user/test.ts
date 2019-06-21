@@ -64,6 +64,7 @@ describe.only = (name, fn) => {
 describe.skip = (name?, fn?) => {}
 
 let depth = 0
+const failed = []
 export async function runTests(items, onlys) {
   depth++
   for (let i = 0; i < items.length; i++) {
@@ -73,11 +74,14 @@ export async function runTests(items, onlys) {
       try {
         console.log(chalk.magenta(`${"#".repeat(depth)} Running ${item.name}`))
         await item.fn()
-        console.log(chalk.green(`Passed ✓ ${item.name}`))
+        passed++
+        console.log(chalk.green(`PASSED ✓ ${item.name}`))
       } catch (e) {
+        failed.push(item.name)
         console.error(chalk.red(e.stack))
-        console.error(item.name, chalk.red('Failed :('))
+        console.error(item.name, chalk.red('FAILED :('))
       }
+      total++
     } else if (item.type === "describe") {
       console.log(chalk.cyan(`${"#".repeat(depth)} ${item.name.toUpperCase()}`))
       for (let i = 0; i < item.befores.length; i++) {
@@ -116,6 +120,8 @@ export const log = (...args) => {
 }
 
 let hasRun = false
+let passed = 0
+let total = 0
 process.on('beforeExit', async () => {
   if (!hasRun) {
     hasRun = true
@@ -127,6 +133,8 @@ process.on('beforeExit', async () => {
       }
     }
     await runTests(curItems, curOnlys)
+    console.log(chalk.cyanBright(`${passed} / ${total} passed`))
+    failed.forEach(name => console.log(chalk.red(`${name} FAILED`)))
     for (let i = 0; i < curAfters.length; i++) {
       try {
         await curAfters[i]()

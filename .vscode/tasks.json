@@ -4,21 +4,19 @@
   "version": "2.0.0",
   "tasks": [
     {
-        "label": "Generate User Test Properties",
-        "type": "shell",
-        "command": "ts-node ${workspaceRoot}/generate-cli.ts",
-        "options": {
-          "cwd": "${workspaceRoot}/test/user",
-          "env": {
-              "FORCE_COLOR": "1"
-          }
-        },
-        "group": "build",
-        "presentation": {
-            "reveal": "always",
-            "panel": "new"
-        }
-
+      "label": "Generate User Test Properties",
+      "type": "shell",
+      "command": "ts-node ${workspaceRoot}/generate-cli.ts",
+      "options": {
+        "cwd": "${workspaceRoot}/test/user"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": true
+      },
+      "problemMatcher": []
     },
     {
       "label": "User Test Deploy",
@@ -27,14 +25,45 @@
       "options": {
         "cwd": "${workspaceRoot}/test/user",
         "env": {
-            "FORCE_COLOR": "1",
-            "PRISMA_MANAGEMENT_API_SECRET": "my-secret"
+          "PRISMA_MANAGEMENT_API_SECRET": "my-secret"
         }
       },
       "group": "test",
       "presentation": {
-          "reveal": "always",
-          "panel": "dedicated"
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      }
+    },
+    {
+      "label": "User Test Prisma Deploy",
+      "type": "shell",
+      "command": "prisma deploy",
+      "options": {
+        "cwd": "${workspaceRoot}/test/user",
+        "env": {
+          "PRISMA_MANAGEMENT_API_SECRET": "my-secret"
+        }
+      },
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      }
+    },
+    {
+      "label": "Start Docker and Prisma User Test",
+      "type": "shell",
+      "command": "docker-machine start; docker-compose up -d",
+      "options": {
+        "cwd": "${workspaceRoot}/test/user/prisma"
+      },
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
       }
     }
   ]

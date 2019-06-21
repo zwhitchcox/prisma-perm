@@ -25,10 +25,10 @@ async function closeServer() {
 async function deleteAllUsers() {
   try {
     await prisma.deleteManyFriendRequests({
-        id_not: 0
+      id_not: 0
     })
     await prisma.deleteManyUsers({
-        id_not: 0
+      id_not: 0
     })
   } catch (e) {
     console.log(`Couldn't delete users`)
@@ -225,7 +225,7 @@ describe('friend requests', () => {
   })
 })
 
-describe.skip('Post to board', () => {
+describe.only('Post to board', () => {
   let user1, user2, user3;
   before(async () => {
     user1 = await createTestUser({}, "user1")
@@ -233,42 +233,227 @@ describe.skip('Post to board', () => {
     user3 = await createTestUser({}, "user3")
   })
 
-  const ADD_POST_MUTATION = `
-    mutation AddPost($where: UserWhereUniqueInput!, $data: UserUpdateInput!, $post: PostCreateInput!) {
-      updateUser(where: $where, data: $data) {
+  const GET_BOARD_QUERY = `
+    query GetBoard($where: UserWhereUniqueInput!) {
+      user(where: $where) {
+        board {
+          id
+        }
       }
     }
   `
-  // const GET_BOARD_MUTATION = `
-  //   query GetBoard($where: UserWhereUniqueInput!) {
-  //     user(where: $where) {
-  //       board {
-  //         id
-  //       }
-  //     }
-  //   }
-  // `
-  test.skip('get own board id', async () => {
-    await sendRequestAsUser(ADD_POST_MUTATION, {
+  test('get own board id', async () => {
+    const result = await sendRequestAsUser(GET_BOARD_QUERY, {
       where: {
-        id: user2.id
-      },
+        id: user1.id
+      }
+    }, user1)
+    const realBoard = await prisma.user({id: user1.id}).board()
+    expect(result.user.board.id).toBe(realBoard.id)
+  })
+
+  const ADD_POST_MUTATION = `
+    mutation AddPost($data: PostCreateInput!) {
+      createPost(data: $data) {
+        id
+      }
+    }
+  `
+  test('post to own board', async () => {
+    const postText = "This is my first post!"
+    const {id:boardId } = await prisma.user({id: user1.id}).board()
+    const result = await sendRequestAsUser(ADD_POST_MUTATION, {
       data: {
-        board: {
-          update: {
-            posts: [
-              {
-                create: {
-                  text: "This is my post"
-                }
-              }
-            ]
-          }
+        text: postText,
+        board: { connect: {id: boardId } },
+        author: { connect: { id: user1.id } },
+      }
+    }, user1)
+    const posts = await prisma.user({id: user1.id}).posts()
+    expect(posts[0].text).toBe(postText)
+  })
+
+  const GET_FRIENDS_QUERY = `
+    query GetUserFriends($where: UserWhereUniqueInput!) {
+      user(where: $where) {
+        friends {
+          id
         }
+      }
+    }
+  `
+  test('view friend\'s friends list', async () => {
+    await expect(sendRequestAsUser(GET_FRIENDS_QUERY, {
+      where: {
+        id: user1.id
+      }
+    }, user2)).rejects.toThrow('You do not have permission to read User')
+    await makeFriends(user1, user2)
+    const { user } = await sendRequestAsUser(GET_FRIENDS_QUERY, {
+      where: {
+        id: user1.id
       }
     }, user2)
   })
+
+  const GET_POSTS_QUERY = `
+    query GetPosts($where: UserWhereUniqueInput!) {
+      user(where: $where) {
+        board {
+          posts {
+            id
+            text
+          }
+        }
+      }
+    }
+  `
+  test('view own posts', async () => {
+    const user1 = await createTestUser({}, "user1")
+    const postText = "This is my second post"
+    const board = await prisma.user({id: user1.id}).board()
+    await prisma.createPost({
+      author: {connect: {id: user1.id}},
+      board: {connect: {id: board.id}},
+      text: postText,
+    })
+
+    const user2 = await createTestUser({}, "user2")
+    const result = await sendRequestAsUser(GET_POSTS_QUERY, {
+      where: {
+        id: user1.id
+      }
+    }, user1)
+    expect(result.user.board.posts[0].text).toBe(postText)
+  })
+
+  test("can view non friend's posts if public", async () => {
+    const user1 = await createTestUser({public: true}, "user1")
+    const user2 = await createTestUser({}, "user2")
+    const postText = "This is my second post"
+    const board = await prisma.user({id: user1.id}).board()
+    await prisma.createPost({
+      author: {connect: {id: user1.id}},
+      board: {connect: {id: board.id}},
+      text: postText,
+    })
+
+    const result = await sendRequestAsUser(GET_POSTS_QUERY, {
+      where: {
+        id: user1.id
+      }
+    }, user2)
+    expect(result.user.board.posts[0].text).toBe(postText)
+  })
+
+  test("can't view non friend's posts if not public", async () => {
+    const user1 = await createTestUser({public: false}, "user1")
+    const user2 = await createTestUser({}, "user2")
+    const postText = "This is my second post"
+    const board = await prisma.user({id: user1.id}).board()
+    await prisma.createPost({
+      author: {connect: {id: user1.id}},
+      board: {connect: {id: board.id}},
+      text: postText,
+    })
+
+    await expect(sendRequestAsUser(GET_POSTS_QUERY, {
+      where: {
+        id: user1.id
+      }
+    }, user2)).rejects.toThrow('You do not have permission to read User')
+    // expect(result.user.board.posts[0].text).toBe(postText)
+  })
+
+  test("can't view public non friend's private board posts", async () => {
+    const user1 = await createTestUser({
+      public: true,
+      board:{
+        create: {
+          posts: {create: []},
+          public: false
+        }
+      }
+    }, "user1")
+    const user2 = await createTestUser({}, "user2")
+    const postText = "This is my 3rd post"
+    const board = await prisma.user({id: user1.id}).board()
+    await prisma.createPost({
+      author: {connect: {id: user1.id}},
+      board: {connect: {id: board.id}},
+      text: postText,
+    })
+
+    await expect(sendRequestAsUser(GET_POSTS_QUERY, {
+      where: {
+        id: user1.id
+      }
+    }, user2)).rejects.toThrow('You do not have permission to read User.board')
+    // expect(result.user.board.posts[0].text).toBe(postText)
+  })
+
+  test.only("can view public non friend's public board posts", async () => {
+    const user1 = await createTestUser({
+      public: true,
+      board:{
+        create: {
+          posts: {create: []},
+          public: true
+        }
+      }
+    }, "user1")
+    const user2 = await createTestUser({}, "user2")
+    const postText = "This is my 4th post"
+    const board = await prisma.user({id: user1.id}).board()
+    await prisma.createPost({
+      author: {connect: {id: user1.id}},
+      board: {connect: {id: board.id}},
+      text: postText,
+      public: true,
+    })
+    await prisma.createPost({
+      author: {connect: {id: user1.id}},
+      board: {connect: {id: board.id}},
+      text: `This should not fetch.`,
+      public: false,
+    })
+
+    const result = await sendRequestAsUser(GET_POSTS_QUERY, {
+      where: {
+        id: user1.id
+      }
+    }, user2)
+    expect(result.user.board.posts[0].text).toBe(postText)
+    expect(result.user.board.posts.length).toBe(1) //TODO
+  })
 })
+
+async function makeFriends(user1, user2) {
+  await prisma.updateUser({
+    where: {
+      id: user1.id
+    },
+    data: {
+      friends: {
+        connect: {
+          id: user2.id
+        }
+      }
+    }
+  })
+  await prisma.updateUser({
+    where: {
+      id: user2.id
+    },
+    data: {
+      friends: {
+        connect: {
+          id: user1.id
+        }
+      }
+    }
+  })
+}
 
 
 
@@ -305,8 +490,9 @@ async function createTestUser(info = {}, prefix?) {
   const board = {
     create: {
       posts: {
-        create: []
-      }
+        create: [],
+      },
+      public: false,
     }
   }
   const password = uuid()
@@ -317,6 +503,7 @@ async function createTestUser(info = {}, prefix?) {
     email,
     password,
     board,
+    public: false,
   }
   return await prisma.createUser({
     ...defaultInfo,

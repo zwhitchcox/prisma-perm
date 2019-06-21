@@ -119,7 +119,7 @@ export function createValidator(field, fieldName) {
 
 export function validate(props:any, input, isUpdate:any): string[] {
   const errors: string[] = []
-  if (props.required && !isUpdate) {
+  if (props.required && !isUpdate && typeof input === "undefined") {
     return [`${props.label} is required`]
   }
 
