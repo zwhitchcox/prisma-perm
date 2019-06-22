@@ -41,6 +41,7 @@ export interface IFieldResult {
   private?: boolean
   isList?: boolean
   relation?: IRelation
+  unique?: boolean
 }
 
 export interface IObjResult {
@@ -134,6 +135,11 @@ export async function generate(graphqlString: string) {
             .find(def => (def.name.value === "private"))
           if (privateDirective) {
             fieldResult.private = true
+          }
+          const uniqueDirective = fieldDef.directives
+            .find(def => (def.name.value === "unique"))
+          if (privateDirective) {
+            fieldResult.unique = true
           }
           const relationDirective = fieldDef.directives
             .find(def => (def.name.value === "relation"))

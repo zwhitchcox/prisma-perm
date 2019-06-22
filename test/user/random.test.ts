@@ -267,6 +267,7 @@ describe.only('Post to board', () => {
         text: postText,
         board: { connect: {id: boardId } },
         author: { connect: { id: user1.id } },
+        public: false,
       }
     }, user1)
     const posts = await prisma.user({id: user1.id}).posts()
@@ -308,7 +309,7 @@ describe.only('Post to board', () => {
       }
     }
   `
-  test('view own posts', async () => {
+  test.only('view own posts', async () => {
     const user1 = await createTestUser({}, "user1")
     const postText = "This is my second post"
     const board = await prisma.user({id: user1.id}).board()
@@ -316,6 +317,7 @@ describe.only('Post to board', () => {
       author: {connect: {id: user1.id}},
       board: {connect: {id: board.id}},
       text: postText,
+      public: false,
     })
 
     const user2 = await createTestUser({}, "user2")
@@ -336,6 +338,7 @@ describe.only('Post to board', () => {
       author: {connect: {id: user1.id}},
       board: {connect: {id: board.id}},
       text: postText,
+      public: false,
     })
 
     const result = await sendRequestAsUser(GET_POSTS_QUERY, {
@@ -355,6 +358,7 @@ describe.only('Post to board', () => {
       author: {connect: {id: user1.id}},
       board: {connect: {id: board.id}},
       text: postText,
+      public: false,
     })
 
     await expect(sendRequestAsUser(GET_POSTS_QUERY, {
@@ -382,6 +386,7 @@ describe.only('Post to board', () => {
       author: {connect: {id: user1.id}},
       board: {connect: {id: board.id}},
       text: postText,
+      public: false,
     })
 
     await expect(sendRequestAsUser(GET_POSTS_QUERY, {
@@ -392,7 +397,7 @@ describe.only('Post to board', () => {
     // expect(result.user.board.posts[0].text).toBe(postText)
   })
 
-  test.only("can view public non friend's public board posts", async () => {
+  test("can view public non friend's public board posts", async () => {
     const user1 = await createTestUser({
       public: true,
       board:{

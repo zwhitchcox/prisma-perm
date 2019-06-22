@@ -1,4 +1,5 @@
 import _ from 'lodash'
+import { properties } from './prisma/generated/perm/properties';
 
 export const roleCheckers = {
   SELF: checkSelf,
@@ -8,8 +9,8 @@ export const roleCheckers = {
   AUTHOR: checkAuthor,
   AUTHOR_FRIEND: checkAuthorFriend,
   ENSURE_POSTS_PUBLIC: ensurePostsPublic,
-  IS_SENDER: isSender,
-  IS_RECIPIENT: isRecipient,
+  IS_SENDER: fieldIsUser('sender'),
+  IS_RECIPIENT: fieldIsUser('recipient'),
   ACCEPT_FRIEND_REQUEST: acceptFriendRequest,
   REMOVE_FRIEND: removeFriend,
   IS_FRIEND: isFriend,
@@ -18,6 +19,8 @@ export const roleCheckers = {
   PROFILE_PUBLIC: checkProfilePublic,
   BOARD_PUBLIC: boardPublic,
 }
+
+
 // TODO make IS_ helper
 // TODO make IS_NOT_ helper
 
@@ -161,43 +164,46 @@ export async function removeFriend(parent, args, context, info) {
   return true
 }
 
-export async function isRecipient(parent, args, context, info) {
-  const user = await context.getUser()
-  const {recipient} = args.where
-  if (recipient) {
-    return isUser(user, recipient)
-  }
+// export async function isRecipient(parent, args, context, info) {
+//   const user = await context.getUser()
+//   const {recipient} = args.where
+//   if (recipient) {
+//     return isUser(user, recipient)
+//   }
 
-  const id = _.get(args, "where.id")
-  if (id) {
-    const recipient = await context.prisma.friendRequest({
-      id
-    }).recipient()
-    return isUser(user, recipient)
-  }
-}
+//   const id = _.get(args, "where.id")
+//   if (id) {
+//     const recipient = await context.prisma.friendRequest({
+//       id
+//     }).recipient()
+//     return isUser(user, recipient)
+//   }
+// }
 
-export async function isSender(parent, args, context, info) {
-  const user = await context.getUser()
-  const sender = _.get(args, 'data.sender.connect') ||
-    args.where.sender
-  if (sender) {
-    return isUser(user, sender)
-  }
-  const id = _.get(args, "where.id")
-  if (id) {
-    const sender = await context.prisma.friendRequest({
-      id
-    }).sender()
-    return isUser(user, sender)
-  }
-}
+
+// export async function isSender(parent, args, context, info) {
+
+//   const user = await context.getUser()
+//   const sender = _.get(args, 'data.sender.connect') ||
+//     _.get(args, 'where.sender')||
+//     await context.prisma.
+//   if (sender) {
+//     return isUser(user, sender)
+//   }
+//   const id = _.get(args, "where.id")
+//   if (id) {
+//     const sender = await context.prisma.friendRequest({
+//       id
+//     }).sender()
+//     return isUser(user, sender)
+//   }
+// }
 
 
 
 async function checkSelf(parent, args, context, info) {
   const user = await context.getUser()
-  return isUser(parent || args.where, user)
+  return compareUniqueFields(parent || args.where, user, getUniqueFields("User"))
 }
 
 async function checkPrivate() {
@@ -214,9 +220,77 @@ async function checkAuthenticated(parent, args, context, info) {
   return true
 }
 
+async function getUser(parent, args, context, info) {
+  return await context.getUser()
+}
 
-function isUser(user1, user2) {
-  return user1.id === user2.id ||
-    user1.email === user2.email ||
-    user1.username === user2.username
+function lowercaseFirstLetter(name) {
+  return name[0].toLowerCase() + name.slice(1)
+}
+
+const _uniqueFieldsCache = {}
+function getUniqueFields(typename) { // lazy load, because why not
+  return _uniqueFieldsCache[typename] ||
+  (_uniqueFieldsCache[typename] = Object.entries(properties[typename].fields)
+    .reduce((uniqueFields, [fieldname, field]) => {
+      if ((field as any).unique) uniqueFields.push(fieldname)
+      return uniqueFields
+    }, ['id']))
+}
+
+function fieldIsUser(fieldname) {
+  return compareRetrieved(getUser, getFieldResource(fieldname))
+}
+
+function compareRetrieved(comparand1, comparand2) {
+  return async function compare(parent, args, context, info) {
+    const resourceName = getRequestResource(info)
+    const uniqueFields = getUniqueFields(resourceName)
+    return compareUniqueFields(
+      await comparand1(parent, args, context, info),
+      await comparand2(parent, args, context, info),
+      uniqueFields
+    )
+  }
+}
+
+function getRequestResource(info) {
+  if (info.parentType.name === "Mutation") {
+    return info.returnType.ofType.name
+  }
+  if (info.parentType.name === "Query") {
+    return info.returnType.name
+  }
+  return info.parentType.name
+}
+
+function compareUniqueFields(first, second, uniqueFields) {
+  for (const field of uniqueFields) {
+    if (first[field] === second[field])
+      return true
+  }
+  return false
+}
+
+function getFieldResource(fieldname) {
+  const fn = async function getFieldResource(parent, args, context, info) {
+    let resource;
+    if(resource = _.get(args, `data.${fieldname}.connect`) ||
+      _.get(args, `where.${fieldname}`))
+      return  resource
+
+    if (args.where) {
+      return context
+        .prisma[lowercaseFirstLetter(getRequestResource(info))]
+          (args.where)[fieldname]()
+    }
+    if (parent && parent.id) {
+      return await context
+        .prisma[lowercaseFirstLetter(info.parentType.name)]
+          ({id: parent.id })[fieldname]()
+    }
+    throw new Error(`Couldn't find ${fieldname}`)
+  }
+  fn.fieldname = fieldname // debugging
+  return fn
 }

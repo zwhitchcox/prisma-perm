@@ -18,8 +18,8 @@ type User  @r(roles: [SELF, IS_FRIEND, PROFILE_PUBLIC]) @u(role: SELF) {
     @r(roles: [SELF, IS_FRIEND, BOARD_PUBLIC])
   friends: [User!]!
     @o(role: ACCEPT_FRIEND_REQUEST)
-    @i(role: [PASS_IS_FRIEND, REMOVE_FRIEND])
-    @r(role: [SELF, IS_FRIEND])
+    @i(roles: [PASS_IS_FRIEND, REMOVE_FRIEND])
+    @r(roles: [SELF, IS_FRIEND])
   posts: [Post!]! @relation(name: "Posts")
   public: Boolean!
 }
@@ -27,9 +27,9 @@ type User  @r(roles: [SELF, IS_FRIEND, PROFILE_PUBLIC]) @u(role: SELF) {
 type FriendRequest @c(role: IS_SENDER) @rd(roles: [IS_SENDER, IS_RECIPIENT]) {
   id: ID! @id
   sender: User! @relation(name: "Sender")
-    @o(roles: IS_SENDER)
+    @o(roles: IS_SENDER) @r(roles: [IS_SENDER, IS_RECIPIENT])
   recipient: User! @relation(name: "Recipient")
-    @o(role: IS_SENDER)
+    @o(role: IS_SENDER) @r(roles: [IS_SENDER, IS_RECIPIENT])
 }
 
 type Board {

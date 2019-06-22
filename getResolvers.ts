@@ -48,7 +48,7 @@ export async function getResolvers(options) {
     resolvers[typename] = {}
     for (const fieldname in _permCheckers._resolvedFields) {
       const resolver = async (parent, args, context, info) => {
-        return await context.prisma[fnName]({id: parent.id})[fieldname]()
+        return await context.prisma[fnName]({id: parent.id})[fieldname](args)
       }
       resolvers[typename][fieldname] = async (parent, args, context, info) => {
         await _permCheckers._resolvedFields[fieldname].read(parent, args, context, info)
