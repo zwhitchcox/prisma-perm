@@ -8,7 +8,7 @@ export const roleCheckers = {
   AUTHENTICATED: checkAuthenticated,
   AUTHOR: checkAuthor,
   AUTHOR_FRIEND: checkAuthorFriend,
-  ENSURE_POSTS_PUBLIC: ensurePostsPublic,
+  POSTS_PUBLIC: postsPublic,
   IS_SENDER: fieldIsUser('sender'),
   IS_RECIPIENT: fieldIsUser('recipient'),
   ACCEPT_FRIEND_REQUEST: acceptFriendRequest,
@@ -24,11 +24,8 @@ export const roleCheckers = {
 // TODO make IS_ helper
 // TODO make IS_NOT_ helper
 
-export async function ensurePostsPublic(parent, args, context, info) {
-  if (!_.get(args, 'where.public')) {
-    args.where = {}
-    return args.where.public = true
-  }
+export async function postsPublic(parent, args, context, info) {
+  return _.get(args, 'where.public')
 }
 
 export async function checkAuthor(parent, args, context, info) {

@@ -11,8 +11,13 @@ import { after, test, before, describe } from './test'
 let server, port;
 after(closeServer)
 before(async () => {
-  server = await testServer()
-  port = server.address().port
+  try {
+    server = await testServer()
+    port = server.address().port
+  } catch (e) {
+    throw new Error(`Couldn't start server ${e.stack}`)
+  }
+
 })
 
 async function closeServer() {
