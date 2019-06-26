@@ -199,8 +199,21 @@ export async function removeFriend(parent, args, context, info) {
 
 
 async function checkSelf(parent, args, context, info) {
+  if (typeof parent === 'string') {
+    parent = await getParent(parent, args, context, info)
+  }
   const user = await context.getUser()
   return compareUniqueFields(parent || args.where, user, getUniqueFields("User"))
+}
+
+async function getParent(parent, args, context, info) {
+  const parentParts = parent.split('.')
+  const typename = lowercaseFirstLetter(info.returnType.name)
+  let ancestor = await context.prisma[typename](args.where)
+  for(let i = parentParts.length - 1; i >= 2; i -= 2) {
+    ancestor = ancestor[parentParts[i]][parentParts[i+1]]
+  }
+  return ancestor
 }
 
 async function checkPrivate() {

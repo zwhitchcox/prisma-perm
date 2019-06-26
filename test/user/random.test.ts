@@ -230,7 +230,7 @@ describe('friend requests', () => {
   })
 })
 
-describe.only('Post to board', () => {
+describe('Post to board', () => {
   let user1, user2, user3;
   before(async () => {
     user1 = await createTestUser({}, "user1")
@@ -314,7 +314,7 @@ describe.only('Post to board', () => {
       }
     }
   `
-  test.only('view own posts', async () => {
+  test('view own posts', async () => {
     const user1 = await createTestUser({}, "user1")
     const postText = "This is my second post"
     const board = await prisma.user({id: user1.id}).board()
@@ -325,30 +325,53 @@ describe.only('Post to board', () => {
       public: false,
     })
 
-    const user2 = await createTestUser({}, "user2")
+    await createTestUser({}, "user2")
     const result = await sendRequestAsUser(GET_POSTS_QUERY, {
       where: {
         id: user1.id
-      }
+      },
     }, user1)
     expect(result.user.board.posts[0].text).toBe(postText)
   })
 
+  const GET_PUBLIC_POSTS_QUERY = `
+    query GetPosts($where: UserWhereUniqueInput!, $wherePublic: PostWhereInput!) {
+      user(where: $where) {
+        board {
+          posts (where: $wherePublic) {
+            id
+            text
+          }
+        }
+      }
+    }
+  `
   test("can view non friend's posts if public", async () => {
-    const user1 = await createTestUser({public: true}, "user1")
+    const postText = "This is my 4asdfa post"
+    const user1 = await createTestUser({
+      public: true,
+      board: {
+        create: {
+          posts: {},
+          public: true,
+        }
+      }
+    }, "user1")
     const user2 = await createTestUser({}, "user2")
-    const postText = "This is my second post"
     const board = await prisma.user({id: user1.id}).board()
     await prisma.createPost({
       author: {connect: {id: user1.id}},
       board: {connect: {id: board.id}},
       text: postText,
-      public: false,
+      public: true,
     })
 
-    const result = await sendRequestAsUser(GET_POSTS_QUERY, {
+    const result = await sendRequestAsUser(GET_PUBLIC_POSTS_QUERY, {
       where: {
         id: user1.id
+      },
+      wherePublic: {
+        public: true,
       }
     }, user2)
     expect(result.user.board.posts[0].text).toBe(postText)
@@ -399,7 +422,6 @@ describe.only('Post to board', () => {
         id: user1.id
       }
     }, user2)).rejects.toThrow('You do not have permission to read User.board')
-    // expect(result.user.board.posts[0].text).toBe(postText)
   })
 
   test("can view public non friend's public board posts", async () => {
@@ -428,13 +450,129 @@ describe.only('Post to board', () => {
       public: false,
     })
 
-    const result = await sendRequestAsUser(GET_POSTS_QUERY, {
+    const result = await sendRequestAsUser(GET_PUBLIC_POSTS_QUERY, {
       where: {
         id: user1.id
+      },
+      wherePublic: {
+        public: true
       }
     }, user2)
     expect(result.user.board.posts[0].text).toBe(postText)
     expect(result.user.board.posts.length).toBe(1) //TODO
+  })
+})
+
+
+const UPDATE_USER_MUTATION = `
+mutation UpdateUser($where: UserWhereUniqueInput!, $data: UserUpdateInput!) {
+  updateUser(where: $where, data: $data) {
+    id
+    firstName
+  }
+}
+`
+describe.only('deep update', () => {
+  test('can deep update own post to private', async () => {
+    const user1 = await createTestUser({}, "user1")
+    const user2 = await createTestUser({}, "user2")
+    const postText = "This is my 4th post"
+    const board = await prisma.user({id: user1.id}).board()
+    const post = await prisma.createPost({
+      author: {connect: {id: user1.id}},
+      board: {connect: {id: board.id}},
+      text: postText,
+      public: true,
+    })
+    await sendRequestAsUser(UPDATE_USER_MUTATION, {
+      where: {
+        id: user1.id
+      },
+      data: {
+        board: {
+          update: {
+            posts: {
+              update: {
+                where: {
+                  id: post.id
+                },
+                data: {
+                  public: false
+                }
+              }
+            }
+          }
+        }
+      }
+    }, user1)
+    const result  = await prisma.user({id: user1.id}).posts()
+    expect(result[0].text).toBe(postText)
+  })
+
+  test('can deep create post', async () => {
+    const user1 = await createTestUser({}, "user1")
+    const user2 = await createTestUser({}, "user2")
+    const postText = "This is my 5th post"
+    const board = await prisma.user({id: user1.id}).board()
+    await prisma.createPost({
+      author: {connect: {id: user1.id}},
+      board: {connect: {id: board.id}},
+      text: postText,
+      public: true,
+    })
+    await sendRequestAsUser(UPDATE_USER_MUTATION, {
+      where: {
+        id: user1.id
+      },
+      data: {
+        board: {
+          update: {
+            posts: {
+              create: {
+                text: postText,
+                public: true,
+                author: {connect: {id: user1.id}} //TEST THIS
+              }
+            }
+          }
+        }
+      }
+    }, user1)
+    const posts  = await prisma.user({id: user1.id}).posts()
+    expect(posts[0].text).toBe(postText)
+  })
+
+  test.only(`can't create with different author`, async () => {
+    const user1 = await createTestUser({}, "user1")
+    const user2 = await createTestUser({}, "user2")
+    const postText = "This is my 5th post"
+    const board = await prisma.user({id: user1.id}).board()
+    await prisma.createPost({
+      author: {connect: {id: user1.id}},
+      board: {connect: {id: board.id}},
+      text: postText,
+      public: true,
+    })
+    await sendRequestAsUser(UPDATE_USER_MUTATION, {
+      where: {
+        id: user1.id
+      },
+      data: {
+        board: {
+          update: {
+            posts: {
+              create: {
+                text: postText,
+                public: true,
+                author: {connect: {id: user2.id}} //TEST THIS
+              }
+            }
+          }
+        }
+      }
+    }, user1)
+    const posts  = await prisma.user({id: user1.id}).posts()
+    expect(posts[0].text).toBe(postText)
   })
 })
 

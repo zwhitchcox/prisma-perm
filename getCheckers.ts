@@ -36,7 +36,13 @@ function getCheckResolvedFields(checkers, properties, typename) {
   const keys = Object.keys(_resolvedFieldCheckers)
   return async function checkResolvedFields(parent, args, context, info) {
     return Promise.all(keys.map(async fieldname => {
-      if (!(fieldname in args.data)) return Promise.resolve()
+      let data
+      if (typeof parent === "string") {
+        data = _.get(args.data, parent)
+      } else {
+        data = args.data
+      }
+      if (!(fieldname in data)) return Promise.resolve()
       await _resolvedFieldCheckers[fieldname](parent, args, context, info)
     }))
   }
@@ -121,9 +127,10 @@ function getValidationCheckers(validators, typeName) {
     }
     const isUpdate = action === "update"
     result[action] = function validate(parent, args, context, info) {
+
       for (const key in validation) {
         const validator = validation[key]
-        const datum = args.data[key]
+        const datum = (args.data || args)[key]
         if (!datum)
           continue
         const errors = validator(datum, isUpdate)
@@ -159,18 +166,24 @@ function getResolvedFieldCheckers(mainResult, properties, typename) {
   for (const fieldname in resolvedFieldPermCheckers) {
     const foreignTypeName = properties[typename].fields[fieldname].type
     const foreignResult = mainResult[foreignTypeName]
-    const checkForeignScalars = foreignResult._checkScalars
+    const checkForeignScalars = foreignResult.checkScalars
     resolvedFieldCheckers[fieldname] = async (parent, args, context, info) => {
-      const fieldArg = args.data[fieldname]
+      let data
+      if (typeof parent === "string") {
+        data = _.get(args.data, parent)
+      } else {
+        data = args.data
+      }
+      const fieldArg = data[fieldname]
       const { create } = fieldArg
       if (create) {
         const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.create`
         return (await Promise.all(
             [
-              await resolvedFieldPermCheckers.create(parent, args, context, info),
-              await checkForeignScalars.create(parent, create, context, info),
+              await resolvedFieldPermCheckers[fieldname].create(parent, args, context, info),
+              await checkForeignScalars.create(parent, args, context, info),
               await mainResult[foreignTypeName]
-                ._checkResolved(combinedParentName, args, context, info),
+                .checkResolved(combinedParentName, args, context, info),
             ])
           ).every(Boolean)
       }
@@ -179,42 +192,42 @@ function getResolvedFieldCheckers(mainResult, properties, typename) {
         const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.update`
         return (await Promise.all(
             [
-              await resolvedFieldPermCheckers.update(parent, args, context, info),
-              await checkForeignScalars.update(parent, create, context, info),
+              await resolvedFieldPermCheckers[fieldname].update(combinedParentName, args, context, info),
+              await checkForeignScalars.update(combinedParentName, update, context, info),
               await mainResult[foreignTypeName]
-                ._checkResolved(combinedParentName, args, context, info),
+                .checkResolved(combinedParentName, args, context, info),
             ])
           ).every(Boolean)
       }
       const { delete:mydel } = fieldArg
       if (mydel) {
         const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.delete`
-        return await resolvedFieldPermCheckers.delete(combinedParentName, args, context, info)
+        return await resolvedFieldPermCheckers[fieldname].delete(combinedParentName, args, context, info)
       }
 
       const { connect } = fieldArg
       if (connect) {
-        if (!resolvedFieldPermCheckers.connect) {
+        if (!resolvedFieldPermCheckers[fieldname].connect) {
           return false
         }
-        return await resolvedFieldPermCheckers.connect(parent, args, context, info)
+        return await resolvedFieldPermCheckers[fieldname].connect(parent, args, context, info)
       }
 
       const { disconnect } = fieldArg
       if (disconnect) {
-        if (!resolvedFieldPermCheckers.disconnect) {
+        if (!resolvedFieldPermCheckers[fieldname].disconnect) {
           return false
         }
-        return await resolvedFieldPermCheckers.disconnect(parent, args, context, info)
+        return await resolvedFieldPermCheckers[fieldname].disconnect(parent, args, context, info)
       }
       const { set } = fieldArg
       if (set) {
-        if (!(resolvedFieldPermCheckers.connect  && resolvedFieldPermCheckers.disconnect)) {
+        if (!(resolvedFieldPermCheckers[fieldname].connect  && resolvedFieldPermCheckers[fieldname].disconnect)) {
           return false
         }
         return (await Promise.all(
-          [await resolvedFieldPermCheckers.connect(parent, args, context, info),
-          await resolvedFieldPermCheckers.disconnect(parent, args, context, info)])
+          [await resolvedFieldPermCheckers[fieldname].connect(parent, args, context, info),
+          await resolvedFieldPermCheckers[fieldname].disconnect(parent, args, context, info)])
         ).every(Boolean)
       }
       throw new Error('Couldn\'t find that action.')

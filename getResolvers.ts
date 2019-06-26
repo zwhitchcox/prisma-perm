@@ -68,9 +68,17 @@ export async function getResolvers(options) {
       checkApi(fnName, prisma)
       const {checkScalars, checkResolved} = checker
       const promiseFns = []
+      const readFnName = lowercaseFirstLetter(typename)
       if (['create', 'update'].includes(action)) {
         promiseFns.push(checkScalars[action])
-        promiseFns.push(checkResolved)
+        // if (action === "update") {
+        //   promiseFns.push(async (parent, args, context, info) => {
+        //     parent = await context.prisma[readFnName](args.where)
+        //     return await checkResolved(parent, args, context, info)
+        //   })
+        // } else {
+          promiseFns.push(checkResolved)
+        // }
       }
       resolvers.Mutation[fnName] = async (...args) => {
         await _permCheckers._type[action](...args)

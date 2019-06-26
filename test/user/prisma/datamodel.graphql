@@ -16,6 +16,7 @@ type User  @r(roles: [SELF, IS_FRIEND, PROFILE_PUBLIC]) @u(role: SELF) {
     @ru(role: PRIVATE)
   board: Board! @relation(name: "Board", onDelete: CASCADE)
     @r(roles: [SELF, IS_FRIEND, BOARD_PUBLIC])
+    @u(role: SELF)
   friends: [User!]!
     @o(role: ACCEPT_FRIEND_REQUEST)
     @i(roles: [PASS_IS_FRIEND, REMOVE_FRIEND])
