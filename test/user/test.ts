@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import uuid from 'uuid/v4'
+import 'source-map-support/register'
 
 let curOnlys = []
 let curItems = []
