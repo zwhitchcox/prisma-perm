@@ -181,19 +181,35 @@ function getResolvedFieldCheckers(mainResult, properties, typename) {
         if (create) {
           const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.create`
           for (let i = 0; i < create.length; i++) {
+            let withNum = `${combinedParentName}.${i}`
             if (!(await Promise.all(
                 [
-                  await resolvedFieldPermCheckers[fieldname].create(parent, args, context, info),
-                  await checkForeignScalars.create(parent, args, context, info),
+                  await resolvedFieldPermCheckers[fieldname].create(withNum, args, context, info),
+                  await checkForeignScalars.create(withNum, args, context, info),
                   await mainResult[foreignTypeName]
-                    .checkResolved(`${combinedParentName}.${i}`, args, context, info),
+                    .checkResolved(withNum, args, context, info),
                 ])
               ).every(Boolean)) return false
           }
+          return true
         }
         const { update } = fieldArg
         if (update) {
           const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.update`
+          if (Array.isArray(update)) {
+            for (let i = 0; i < update.length; i++) {
+              const withNum = `${combinedParentName}.${i}`
+              if (!(await Promise.all(
+                  [
+                    await resolvedFieldPermCheckers[fieldname].update(withNum, args, context, info),
+                    await checkForeignScalars.update(withNum, args, context, info),
+                    await mainResult[foreignTypeName]
+                      .checkResolved(withNum, args, context, info),
+                  ])
+                ).every(Boolean)) return false
+            }
+            return true
+          }
           return (await Promise.all(
               [
                 await resolvedFieldPermCheckers[fieldname].update(combinedParentName, args, context, info),

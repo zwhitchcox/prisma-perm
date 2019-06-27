@@ -472,7 +472,7 @@ mutation UpdateUser($where: UserWhereUniqueInput!, $data: UserUpdateInput!) {
   }
 }
 `
-describe.only('deep update', () => {
+describe('deep update', () => {
   test('can deep update own post to private', async () => {
     const user1 = await createTestUser({}, "user1")
     const user2 = await createTestUser({}, "user2")
@@ -509,7 +509,7 @@ describe.only('deep update', () => {
     expect(result[0].text).toBe(postText)
   })
 
-  test.only('can deep create post', async () => {
+  test('can deep create post', async () => {
     const user1 = await createTestUser({}, "user1")
     const user2 = await createTestUser({}, "user2")
     const postText = "This is my 5th post"
@@ -525,7 +525,7 @@ describe.only('deep update', () => {
               create: {
                 text: postText,
                 public: true,
-                author: {connect: {id: user1.id}} //TEST THIS
+                author: {connect: {id: user1.id}}
               }
             }
           }
@@ -540,7 +540,7 @@ describe.only('deep update', () => {
     const user1 = await createTestUser({}, "user1")
     const user2 = await createTestUser({}, "user2")
     const postText = "This is my 6th post"
-    const board = await prisma.user({id: user1.id}).board()
+    await prisma.user({id: user1.id}).board()
     await expect(sendRequestAsUser(UPDATE_USER_MUTATION, {
       where: {
         id: user1.id
@@ -552,7 +552,7 @@ describe.only('deep update', () => {
               create: {
                 text: postText,
                 public: true,
-                author: {connect: {id: user2.id}} //TEST THIS
+                author: {connect: {id: user2.id}}
               }
             }
           }

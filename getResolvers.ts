@@ -35,7 +35,7 @@ export async function getResolvers(options) {
       const checkerFns = []
       checkerFns.push(_permCheckers._type.read)
       for (const fieldname of requestedFieldNames) {
-        const checkerFn = _permCheckers._scalarFields.read[fieldname] // || _.get(_permCheckers, `_resolvedFields[${fieldname}].read`) <-- done by resolvers
+        const checkerFn = _permCheckers._scalarFields.read[fieldname] // || _.get(_permCheckers, `_resolvedFields[${fieldname}].read`) <-- done by resArgsolvers
         if (checkerFn) checkerFns.push(checkerFn)
       }
       await Promise.all(checkerFns.map(async fn => {
