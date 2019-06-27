@@ -29,14 +29,35 @@ export async function postsPublic(parent, args, context, info) {
 }
 
 export async function checkAuthor(parent, args, context, info) {
+  let parentType
+  if (typeof parent === "string") {
+    [parent, args, parentType] = await getParent2(parent, args, context, info)
+  }
   const user = await context.getUser()
-  if (info.parentType.name === "Board") {
+  parentType = parentType || info.parentType.name
+  if (parentType === "Board") {
     return await getBoardOwnerByBoardId(parent.id, context) === user.id
   }
 
   let authorId;
   if (authorId = _.get(args, 'data.author.connect.id')) {
     return authorId === user.id
+  }
+}
+async function getParent2(parent, args, context, info) {
+  const parentParts = parent.split('.')
+  let curParent, curChildName, curParentType, curChildType, curArgs, curData
+  if (args.where) {
+    curParentType = info.returnType.name
+    curParent = args.where
+    curArgs = args.data
+    for (let i =0; i < parentParts.length; i+=2) {
+      curChildName = parentParts[i]
+      curArgs = _.get(curArgs, `${parentParts[i]}.${parentParts[i+1]}`)
+      curParent = await context.prisma[lowercaseFirst(curParentType)]({id: curParent.id})[curChildName](curArgs.where)
+      curParentType = properties[curParentType].fields[curChildName].type
+    }
+    return [curParent, curArgs, curParentType]
   }
 }
 
@@ -208,7 +229,7 @@ async function checkSelf(parent, args, context, info) {
 
 async function getParent(parent, args, context, info) {
   const parentParts = parent.split('.')
-  const typename = lowercaseFirstLetter(info.returnType.name)
+  const typename = lowercaseFirst(info.returnType.name)
   let ancestor = await context.prisma[typename](args.where)
   for(let i = parentParts.length - 1; i >= 2; i -= 2) {
     ancestor = ancestor[parentParts[i]][parentParts[i+1]]
@@ -234,8 +255,12 @@ async function getUser(parent, args, context, info) {
   return await context.getUser()
 }
 
-function lowercaseFirstLetter(name) {
+function lowercaseFirst(name) {
   return name[0].toLowerCase() + name.slice(1)
+}
+
+function uppercaseFirstLetter(name) {
+  return name[0].toUpperCase() + name.slice(1)
 }
 
 const _uniqueFieldsCache = {}
@@ -291,12 +316,12 @@ function getFieldResource(fieldname) {
 
     if (args.where) {
       return context
-        .prisma[lowercaseFirstLetter(getRequestResource(info))]
+        .prisma[lowercaseFirst(getRequestResource(info))]
           (args.where)[fieldname]()
     }
     if (parent && parent.id) {
       return await context
-        .prisma[lowercaseFirstLetter(info.parentType.name)]
+        .prisma[lowercaseFirst(info.parentType.name)]
           ({id: parent.id })[fieldname]()
     }
     throw new Error(`Couldn't find ${fieldname}`)

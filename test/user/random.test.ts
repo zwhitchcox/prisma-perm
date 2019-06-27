@@ -509,17 +509,11 @@ describe.only('deep update', () => {
     expect(result[0].text).toBe(postText)
   })
 
-  test('can deep create post', async () => {
+  test.only('can deep create post', async () => {
     const user1 = await createTestUser({}, "user1")
     const user2 = await createTestUser({}, "user2")
     const postText = "This is my 5th post"
     const board = await prisma.user({id: user1.id}).board()
-    await prisma.createPost({
-      author: {connect: {id: user1.id}},
-      board: {connect: {id: board.id}},
-      text: postText,
-      public: true,
-    })
     await sendRequestAsUser(UPDATE_USER_MUTATION, {
       where: {
         id: user1.id
@@ -542,18 +536,12 @@ describe.only('deep update', () => {
     expect(posts[0].text).toBe(postText)
   })
 
-  test.only(`can't create with different author`, async () => {
+  test(`can't create with different author`, async () => {
     const user1 = await createTestUser({}, "user1")
     const user2 = await createTestUser({}, "user2")
-    const postText = "This is my 5th post"
+    const postText = "This is my 6th post"
     const board = await prisma.user({id: user1.id}).board()
-    await prisma.createPost({
-      author: {connect: {id: user1.id}},
-      board: {connect: {id: board.id}},
-      text: postText,
-      public: true,
-    })
-    await sendRequestAsUser(UPDATE_USER_MUTATION, {
+    await expect(sendRequestAsUser(UPDATE_USER_MUTATION, {
       where: {
         id: user1.id
       },
@@ -570,9 +558,9 @@ describe.only('deep update', () => {
           }
         }
       }
-    }, user1)
+    }, user1)).rejects.toThrow('You do not have permission to create Board.posts')
     const posts  = await prisma.user({id: user1.id}).posts()
-    expect(posts[0].text).toBe(postText)
+    expect(posts.length).toBe(0)
   })
 })
 

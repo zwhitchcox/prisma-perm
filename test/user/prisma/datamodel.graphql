@@ -38,6 +38,7 @@ type Board {
   owner: User! @relation(name: "Board", link: INLINE)
   posts: [Post!]! @relation(name: "BoardPosts", onDelete: CASCADE)
     @r(roles: [AUTHOR, AUTHOR_FRIEND, POSTS_PUBLIC])
+    @c(role: AUTHOR)
   public: Boolean!
 }
 
