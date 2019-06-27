@@ -1,6 +1,6 @@
 {
   "name": "prisma-perm",
-  "version": "0.0.1",
+  "version": "0.0.1-alpha",
   "main": "index.ts",
   "bin": {
     "generate": "./dist/generate-cli.js"
