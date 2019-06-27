@@ -174,63 +174,68 @@ function getResolvedFieldCheckers(mainResult, properties, typename) {
       } else {
         data = args.data
       }
-      const fieldArg = data[fieldname]
-      const { create } = fieldArg
-      if (create) {
-        const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.create`
-        return (await Promise.all(
-            [
-              await resolvedFieldPermCheckers[fieldname].create(parent, args, context, info),
-              await checkForeignScalars.create(parent, args, context, info),
-              await mainResult[foreignTypeName]
-                .checkResolved(combinedParentName, args, context, info),
-            ])
-          ).every(Boolean)
-      }
-      const { update } = fieldArg
-      if (update) {
-        const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.update`
-        return (await Promise.all(
-            [
-              await resolvedFieldPermCheckers[fieldname].update(combinedParentName, args, context, info),
-              await checkForeignScalars.update(combinedParentName, update, context, info),
-              await mainResult[foreignTypeName]
-                .checkResolved(combinedParentName, args, context, info),
-            ])
-          ).every(Boolean)
-      }
-      const { delete:mydel } = fieldArg
-      if (mydel) {
-        const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.delete`
-        return await resolvedFieldPermCheckers[fieldname].delete(combinedParentName, args, context, info)
-      }
+      const fieldArgs = [].concat(data[fieldname] || data)
+      for (let i = 0; i < fieldArgs.length; i++) {
+        const fieldArg = fieldArgs[i]
+        const { create } = fieldArg
+        if (create) {
+          const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.create`
+          for (let i = 0; i < create.length; i++) {
+            if (!(await Promise.all(
+                [
+                  await resolvedFieldPermCheckers[fieldname].create(parent, args, context, info),
+                  await checkForeignScalars.create(parent, args, context, info),
+                  await mainResult[foreignTypeName]
+                    .checkResolved(`${combinedParentName}.${i}`, args, context, info),
+                ])
+              ).every(Boolean)) return false
+          }
+        }
+        const { update } = fieldArg
+        if (update) {
+          const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.update`
+          return (await Promise.all(
+              [
+                await resolvedFieldPermCheckers[fieldname].update(combinedParentName, args, context, info),
+                await checkForeignScalars.update(combinedParentName, update, context, info),
+                await mainResult[foreignTypeName]
+                  .checkResolved(combinedParentName, args, context, info),
+              ])
+            ).every(Boolean)
+        }
+        const { delete:mydel } = fieldArg
+        if (mydel) {
+          const combinedParentName = `${parent ? (parent + ".") : ""}${fieldname}.delete`
+          return await resolvedFieldPermCheckers[fieldname].delete(combinedParentName, args, context, info)
+        }
 
-      const { connect } = fieldArg
-      if (connect) {
-        if (!resolvedFieldPermCheckers[fieldname].connect) {
-          return false
+        const { connect } = fieldArg
+        if (connect) {
+          if (!resolvedFieldPermCheckers[fieldname].connect) {
+            return false
+          }
+          return await resolvedFieldPermCheckers[fieldname].connect(parent, args, context, info)
         }
-        return await resolvedFieldPermCheckers[fieldname].connect(parent, args, context, info)
-      }
 
-      const { disconnect } = fieldArg
-      if (disconnect) {
-        if (!resolvedFieldPermCheckers[fieldname].disconnect) {
-          return false
+        const { disconnect } = fieldArg
+        if (disconnect) {
+          if (!resolvedFieldPermCheckers[fieldname].disconnect) {
+            return false
+          }
+          return await resolvedFieldPermCheckers[fieldname].disconnect(parent, args, context, info)
         }
-        return await resolvedFieldPermCheckers[fieldname].disconnect(parent, args, context, info)
-      }
-      const { set } = fieldArg
-      if (set) {
-        if (!(resolvedFieldPermCheckers[fieldname].connect  && resolvedFieldPermCheckers[fieldname].disconnect)) {
-          return false
+        const { set } = fieldArg
+        if (set) {
+          if (!(resolvedFieldPermCheckers[fieldname].connect  && resolvedFieldPermCheckers[fieldname].disconnect)) {
+            return false
+          }
+          return (await Promise.all(
+            [await resolvedFieldPermCheckers[fieldname].connect(parent, args, context, info),
+            await resolvedFieldPermCheckers[fieldname].disconnect(parent, args, context, info)])
+          ).every(Boolean)
         }
-        return (await Promise.all(
-          [await resolvedFieldPermCheckers[fieldname].connect(parent, args, context, info),
-          await resolvedFieldPermCheckers[fieldname].disconnect(parent, args, context, info)])
-        ).every(Boolean)
+        throw new Error('Couldn\'t find that action.')
       }
-      throw new Error('Couldn\'t find that action.')
     }
   }
   return resolvedFieldCheckers

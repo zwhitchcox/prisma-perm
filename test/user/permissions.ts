@@ -38,22 +38,29 @@ export async function checkAuthor(parent, args, context, info) {
   if (parentType === "Board") {
     return await getBoardOwnerByBoardId(parent.id, context) === user.id
   }
+  const data = args.data || args
 
   let authorId;
-  if (authorId = _.get(args, 'data.author.connect.id')) {
+  if (authorId = _.get(data, 'author.connect.id')) {
     return authorId === user.id
   }
 }
 async function getParent2(parent, args, context, info) {
   const parentParts = parent.split('.')
-  let curParent, curChildName, curParentType, curChildType, curArgs, curData
+  let curParent, curChildName, curParentType, curArgs, curAction
   if (args.where) {
     curParentType = info.returnType.name
     curParent = args.where
     curArgs = args.data
     for (let i =0; i < parentParts.length; i+=2) {
       curChildName = parentParts[i]
-      curArgs = _.get(curArgs, `${parentParts[i]}.${parentParts[i+1]}`)
+      curAction = parentParts[i+1]
+      let extra = ""
+      if (curAction === "create") {
+        extra = `.${parentParts[i+2]}`
+        i++
+      }
+      curArgs = _.get(curArgs, `${curChildName}.${curAction}${extra}`)
       curParent = await context.prisma[lowercaseFirst(curParentType)]({id: curParent.id})[curChildName](curArgs.where)
       curParentType = properties[curParentType].fields[curChildName].type
     }
