@@ -65,6 +65,19 @@
         "panel": "dedicated",
         "focus": false
       }
+    },
+    {
+      "label": "Compile Watch",
+      "type": "shell",
+      "command": "tsc -w",
+      "options": {
+        "cwd": "${workspaceRoot}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      }
     }
   ]
 }

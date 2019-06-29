@@ -1,9 +1,9 @@
 {
   "name": "prisma-perm",
   "version": "0.0.1-alpha",
-  "main": "index.ts",
+  "main": "dist/index.js",
   "bin": {
-    "generate": "./dist/generate-cli.js"
+    "prisma-perm": "./dist/cli.js"
   },
   "repository": "https://github.com/zwhitchcox/prisma-perm",
   "author": "<zwhitchcox@gmail.com>",

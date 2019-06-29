@@ -17,7 +17,7 @@ interface FieldResolvers {
   [key: string]: FieldResolver
 }
 
-export async function getResolvers(options) {
+export function getResolvers(options) {
   const {properties, prisma} = options
   const checkers =  getCheckers(options)
   const resolvers = {
@@ -117,10 +117,4 @@ function getReadFieldNames(parent, args, context, info) {
   const { selectionSet:fieldSelectionSet } = mainSelection[0]
   const { selections:fieldSelections } = fieldSelectionSet
   return fieldSelections.map(selection => selection.name.value)
-}
-
-function arrayToOrList(array){
-  return array
-    .join(", ")
-    .replace(/, ((?:.(?!, ))+)$/, ' or $1');
 }
